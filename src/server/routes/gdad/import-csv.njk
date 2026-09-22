@@ -1,0 +1,48 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <p class="govuk-body">
+        <a class="govuk-back-link" href="/my-gdad-evidence">Back to GDaD evidence overview</a>
+      </p>
+
+      <h1 class="govuk-heading-xl">Import GDaD evidence from CSV</h1>
+
+      <p class="govuk-body">
+        Upload a CSV in the same structure as the reference template. We import the
+        <strong>Situation</strong>, <strong>Task</strong>, <strong>Action</strong> and <strong>Result</strong> columns
+        for each recognised skill.
+      </p>
+      <p class="govuk-body">
+        Scores in the CSV are ignored. Official scores are still set during review.
+      </p>
+      <p class="govuk-body">
+        Download blank CSV templates:
+        <a class="govuk-link" href="/gdad-reference/template-seo.csv">SEO</a>,
+        <a class="govuk-link" href="/gdad-reference/template-g7.csv">G7</a>,
+        <a class="govuk-link" href="/gdad-reference/template-g6.csv">G6</a>.
+      </p>
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
+      <form method="post" action="/my-gdad-evidence/import-csv" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="evidenceCsv">CSV file</label>
+          <div id="evidenceCsv-hint" class="govuk-hint">
+            Accepted format: the reference template CSV with SKILL, SITUATION, TASK, ACTION and RESULT columns.
+          </div>
+          <input class="govuk-file-upload" id="evidenceCsv" name="evidenceCsv" type="file" accept=".csv,text/csv" aria-describedby="evidenceCsv-hint">
+        </div>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">Import evidence</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

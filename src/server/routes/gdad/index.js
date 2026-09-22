@@ -1,8 +1,16 @@
+import { gdadReferenceRoutes } from './reference-controller.js'
+import { gdadEvidenceRoutes } from './evidence-controller.js'
+import { gdadReviewRoutes } from './review-controller.js'
+
 export const gdad = {
   plugin: {
     name: 'gdad',
-    register() {
-      // GDaD routes are added here as the port progresses
+    register(server) {
+      server.route([
+        ...gdadReferenceRoutes,
+        ...gdadEvidenceRoutes,
+        ...gdadReviewRoutes
+      ])
     }
   }
 }
