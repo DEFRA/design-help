@@ -4,8 +4,12 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_design-help&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DEFRA_design-help)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_design-help&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DEFRA_design-help)
 
-Core delivery platform Node.js Frontend Template.
+**Defra DDTS Design help** — an internal directory where the Defra design community finds and offers support: profiles, availability, offers and requests, long-term helping, and GDaD (DDaT) design skills evidence with line-manager review.
 
+This is the frontend service (Hapi + Nunjucks + GOV.UK Frontend, sessions in Redis). All data lives behind the companion API, [design-help-backend](https://github.com/DEFRA/design-help-backend) (Hapi + MongoDB). It is a port of the original [GOV.UK Prototype Kit prototype](https://github.com/defra-design/design-help) onto Defra's Core Delivery Platform; the Postgres/Passport prototype architecture was replaced with a backend API and passwordless magic-link sign-in.
+
+- [Service overview](#service-overview)
+- [Configuration](#configuration)
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
 - [Server-side Caching](#server-side-caching)
@@ -26,6 +30,41 @@ Core delivery platform Node.js Frontend Template.
   - [SonarCloud](#sonarcloud)
 - [Licence](#licence)
   - [About the licence](#about-the-licence)
+
+## Service overview
+
+- **Sign in**: passwordless. An allow-listed email requests a single-use, 15-minute sign-in link sent via GOV.UK Notify. In local development (no Notify key) the link is logged to the console instead. Access is managed by admins on the People and access page.
+- **Directory**: browse/search team members, profile pages, offers (what people can help with) and requests (what people want help with), long-term helping with availability.
+- **Admin**: people and access management, add-profile wizard, line-manager identification and allocations (Head of Design only), admin grant/revoke (Head of Design only; bootstrap admins from `ADMIN_EMAILS` cannot be revoked).
+- **GDaD**: designers keep STAR evidence for the seven DDaT design skills (typed or CSV import); line managers and admins review and score; capability banding from the best six scores.
+
+Local development needs the backend running (see its README) and a `.env` such as:
+
+```
+PORT=3199
+BACKEND_API_URL=http://localhost:3198
+ADMIN_EMAILS=you@defra.gov.uk
+GDAD_HEAD_OF_DESIGN_EMAILS=you@defra.gov.uk
+```
+
+## Configuration
+
+Non-secret config lives in `cdp-app-config` per environment; secrets in the CDP Portal Secrets tab. Everything arrives as environment variables and is read once at container start — config changes need a redeploy, not a rebuild.
+
+| Variable                        | Kind       | Purpose                                                                                                                   |
+| ------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `BACKEND_API_URL`               | config     | Base URL of design-help-backend (e.g. `https://design-help-backend.dev.cdp-int.defra.cloud`)                              |
+| `APP_BASE_URL`                  | config     | Public base URL of this service, used to build sign-in links                                                              |
+| `ADMIN_EMAILS`                  | config     | Comma-separated bootstrap admins (always admin, cannot be revoked in-app)                                                 |
+| `GDAD_HEAD_OF_DESIGN_EMAILS`    | config     | Emails allowed the Head of Design super-user role and job title                                                           |
+| `NOTIFY_MAGIC_LINK_TEMPLATE_ID` | config     | Notify template with `((sign_in_link))` personalisation                                                                   |
+| `NOTIFY_FEEDBACK_TEMPLATE_ID`   | config     | Notify template with `((service_name))`, `((feedback_details))`, `((page_path))`, `((contact_email))`, `((signed_in_as))` |
+| `FEEDBACK_INBOX_EMAIL`          | config     | Inbox that receives service feedback                                                                                      |
+| `MAGIC_LINK_TTL`                | config     | Sign-in link TTL in ms (default 15 minutes)                                                                               |
+| `NOTIFY_API_KEY`                | **secret** | GOV.UK Notify API key                                                                                                     |
+| `SESSION_COOKIE_PASSWORD`       | **secret** | At least 32 characters                                                                                                    |
+
+In production, sign-in is restricted to `@defra.gov.uk` addresses and refuses to run without Notify configured. Outside production any allow-listed address works and links/feedback are logged instead of emailed.
 
 ## Requirements
 
