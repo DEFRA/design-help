@@ -1,0 +1,311 @@
+// Design help brand styling, ported from the prototype's application.scss.
+// The prototype relied on inline style attributes for nav layout; CDP's CSP
+// strips those, so the layout rules live here as classes instead.
+// stylelint-disable declaration-no-important -- brand overrides must beat govuk-frontend's own specificity
+
+$design-help-green: #005a30;
+$design-help-green-dark: #003d22;
+$design-help-green-mid: #00703c;
+$design-help-green-tint: #edf7ef;
+$design-help-green-tint-dark: #d9eddc;
+$design-help-yellow: #ffdd00;
+$design-help-ink: #0b0c0c;
+$design-help-border: #b1b4b6;
+
+// Brand header using Defra green
+.design-help-brand-header {
+  background-color: $design-help-green;
+}
+
+.design-help-brand-header__link {
+  display: inline-block;
+  padding: 18px 0 16px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.design-help-brand-header__link:visited,
+.design-help-brand-header__link:link,
+.design-help-brand-header__title {
+  color: #ffffff;
+}
+
+.design-help-brand-header__link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+}
+
+.design-help-brand-header__link:focus {
+  color: $design-help-ink;
+}
+
+.design-help-brand-header__title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+// Main nav: light green background, dark green text
+.govuk-service-navigation {
+  background-color: $design-help-green-tint !important;
+  border-bottom-color: #1f3d2a !important;
+}
+
+.govuk-service-navigation__container,
+.govuk-service-navigation__wrapper {
+  background-color: $design-help-green-tint !important;
+}
+
+.govuk-service-navigation__link:link,
+.govuk-service-navigation__link:visited {
+  color: $design-help-green !important;
+}
+
+.govuk-service-navigation__item--active .govuk-service-navigation__link,
+.govuk-service-navigation__link:hover {
+  color: $design-help-green-dark !important;
+}
+
+.govuk-service-navigation__item--active {
+  border-bottom-color: $design-help-green-mid !important;
+}
+
+.govuk-service-navigation__item--active .govuk-service-navigation__link {
+  font-weight: 700;
+}
+
+.govuk-service-navigation__link:hover {
+  background-color: $design-help-green-tint-dark !important;
+}
+
+.govuk-service-navigation__link:focus {
+  background-color: $design-help-yellow !important;
+  color: $design-help-ink !important;
+}
+
+// Right-side account links (Admin / My profile / Sign in/out)
+.govuk-service-navigation .govuk-link,
+.govuk-service-navigation .govuk-link:visited,
+.govuk-service-navigation .govuk-link:link {
+  color: $design-help-green !important;
+}
+
+.govuk-service-navigation .govuk-link:hover {
+  color: $design-help-green-dark !important;
+}
+
+// Nav layout: classes replacing the prototype's inline style attributes
+.design-help-nav__container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.design-help-nav__wrapper {
+  flex: 1;
+}
+
+.design-help-nav__account {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.design-help-nav__account-group {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.design-help-nav__account-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+// Sign out is a crumb-protected POST form; make its button read as a link
+.design-help-nav__signout-form {
+  margin: 0;
+}
+
+.design-help-nav__signout-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.design-help-signin-list {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.25rem;
+  row-gap: 0.25rem;
+}
+
+// Footer: one light-green band (flex shell avoids margin-collapse gaps that showed body white)
+.govuk-footer__meta {
+  border-top-color: $design-help-green-mid !important;
+}
+
+.design-help-footer-shell {
+  background-color: $design-help-green-tint !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.design-help-footer-shell .design-help-footer-lead,
+.design-help-footer-shell .govuk-footer,
+.design-help-footer-shell .govuk-footer__meta {
+  background-color: transparent !important;
+}
+
+.govuk-footer {
+  border-top-color: $design-help-green-mid !important;
+}
+
+// 10px bar + column content; transparent so .design-help-footer-shell colour shows through
+.design-help-footer-lead {
+  border-top: 10px solid $design-help-green-mid;
+  color: $design-help-ink;
+}
+
+// Section-break bottom margin would otherwise collapse past this block into the following <footer>
+.design-help-footer-shell .design-help-footer-lead .govuk-footer__section-break {
+  margin-bottom: 0 !important;
+}
+
+.design-help-footer-shell .govuk-footer.design-help-footer--meta-only {
+  border-top: none !important;
+  padding-top: 25px !important;
+}
+
+// Notify-style column band: neutral separators (rebrand defaults use blue)
+.design-help-footer-lead .govuk-footer__heading {
+  border-bottom-color: $design-help-border !important;
+}
+
+.design-help-footer-lead .govuk-footer__heading.govuk-heading-s {
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+}
+
+@media (max-width: 40.0525em) {
+  .design-help-footer-lead .govuk-footer__heading.govuk-heading-s {
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+  }
+}
+
+.design-help-footer-lead .govuk-footer__section-break {
+  border-bottom-color: $design-help-border !important;
+}
+
+.design-help-footer-lead .govuk-footer__link:link,
+.design-help-footer-lead .govuk-footer__link:visited {
+  color: $design-help-green !important;
+}
+
+.design-help-footer-lead .govuk-footer__link:hover {
+  color: $design-help-green-dark !important;
+}
+
+.design-help-footer-lead .govuk-footer__link:focus {
+  color: $design-help-ink !important;
+}
+
+// Slim footer: no rebrand crown row, no Crown copyright column (OGL row only)
+.govuk-footer.design-help-footer--meta-only .govuk-footer__crown {
+  display: none !important;
+}
+
+.govuk-footer.design-help-footer--meta-only
+  .govuk-footer__meta-item:not(.govuk-footer__meta-item--grow) {
+  display: none !important;
+}
+
+.govuk-footer.design-help-footer--meta-only .govuk-footer__meta {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.govuk-footer a:link,
+.govuk-footer a:visited {
+  color: $design-help-green !important;
+}
+
+.govuk-footer a:hover {
+  color: $design-help-green-dark !important;
+}
+
+.govuk-footer a:focus {
+  color: $design-help-ink !important;
+}
+
+// Admin tools: horizontal text links at top of admin content
+.design-help-admin-tools__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.design-help-admin-tools__item {
+  margin: 0;
+}
+
+// People and access table: stack row actions with consistent spacing
+.design-help-admin-users-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+
+  form {
+    margin: 0;
+  }
+
+  .govuk-button {
+    margin-bottom: 0;
+  }
+}
+
+// Contact aside: left accent (inset-style) without top padding on large screens so “Get in touch” aligns with job title row
+.profile-page__contact-aside {
+  border-left: 4px solid $design-help-border;
+  padding-left: 15px;
+}
+
+@media (min-width: 48.0625em) {
+  // Floated/flex siblings: keep sidebar anchored to top of the row beside job title
+  .profile-page__contact-sidebar {
+    align-self: start;
+  }
+
+  .profile-page__contact-aside {
+    padding-top: 0;
+  }
+
+  .profile-page__job-title {
+    margin-top: 0;
+  }
+}
+
+// Space above sidebar when profile columns stack on narrow screens
+@media (max-width: 48.0625em) {
+  .profile-page__contact-sidebar {
+    margin-top: 2.5rem;
+  }
+
+  .profile-page__contact-aside {
+    padding-top: 15px;
+  }
+}

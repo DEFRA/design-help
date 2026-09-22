@@ -1,14 +1,24 @@
 export function buildNavigation(request) {
   return [
     {
-      text: 'Home',
+      text: 'Design help',
       href: '/',
       current: request?.path === '/'
     },
     {
-      text: 'About',
-      href: '/about',
-      current: request?.path === '/about'
+      text: 'Team members',
+      href: '/browse',
+      current: request?.path === '/browse'
+    },
+    {
+      text: 'Offers',
+      href: '/offers',
+      current: request?.path === '/offers'
+    },
+    {
+      text: 'Requests',
+      href: '/requests',
+      current: request?.path === '/requests'
     }
   ]
 }

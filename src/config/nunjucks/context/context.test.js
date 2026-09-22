@@ -62,17 +62,33 @@ describe('context and cache', () => {
           navigation: [
             {
               current: true,
-              text: 'Home',
+              text: 'Design help',
               href: '/'
             },
             {
               current: false,
-              text: 'About',
-              href: '/about'
+              text: 'Team members',
+              href: '/browse'
+            },
+            {
+              current: false,
+              text: 'Offers',
+              href: '/offers'
+            },
+            {
+              current: false,
+              text: 'Requests',
+              href: '/requests'
             }
           ],
-          serviceName: 'design-help',
-          serviceUrl: '/'
+          serviceName: 'Defra DDTS Design help',
+          serviceUrl: '/',
+          user: null,
+          isAdmin: false,
+          currentPath: '/',
+          appVersion: 'dev',
+          feedbackLinkHref: '/feedback?return=%2F',
+          showFeedbackFooter: true
         })
       })
 
@@ -151,17 +167,33 @@ describe('context and cache', () => {
           navigation: [
             {
               current: true,
-              text: 'Home',
+              text: 'Design help',
               href: '/'
             },
             {
               current: false,
-              text: 'About',
-              href: '/about'
+              text: 'Team members',
+              href: '/browse'
+            },
+            {
+              current: false,
+              text: 'Offers',
+              href: '/offers'
+            },
+            {
+              current: false,
+              text: 'Requests',
+              href: '/requests'
             }
           ],
-          serviceName: 'design-help',
-          serviceUrl: '/'
+          serviceName: 'Defra DDTS Design help',
+          serviceUrl: '/',
+          user: null,
+          isAdmin: false,
+          currentPath: '/',
+          appVersion: 'dev',
+          feedbackLinkHref: '/feedback?return=%2F',
+          showFeedbackFooter: true
         })
       })
     })

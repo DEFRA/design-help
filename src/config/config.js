@@ -44,7 +44,7 @@ export const config = convict({
   serviceName: {
     doc: 'Applications Service Name',
     format: String,
-    default: 'design-help'
+    default: 'Defra DDTS Design help'
   },
   root: {
     doc: 'Project root',

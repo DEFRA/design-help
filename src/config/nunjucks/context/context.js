@@ -14,6 +14,19 @@ const manifestPath = path.join(
 
 let viteManifest
 
+/**
+ * The context builder also runs for error pages (404/500), where request.yar
+ * can be uninitialised and reading it throws — which would turn every 404
+ * into a 500. Read the session defensively.
+ */
+function getSessionUser(request) {
+  try {
+    return request?.yar?.get('user') ?? null
+  } catch {
+    return null
+  }
+}
+
 export function context(request) {
   if (config.get('isProduction') && !viteManifest) {
     try {
@@ -23,12 +36,21 @@ export function context(request) {
     }
   }
 
+  const user = getSessionUser(request)
+  const feedbackLinkHref = `/feedback?return=${encodeURIComponent(request?.path ?? '/')}`
+
   return {
     assetPath: `${assetPath}/assets`,
     serviceName: config.get('serviceName'),
     serviceUrl: '/',
     breadcrumbs: [],
     navigation: buildNavigation(request),
+    user,
+    isAdmin: Boolean(user?.isAdmin),
+    currentPath: request?.path ?? '/',
+    appVersion: config.get('serviceVersion') ?? 'dev',
+    feedbackLinkHref,
+    showFeedbackFooter: request?.path !== '/feedback',
     getAssetPath(asset) {
       if (!config.get('isProduction')) {
         return `${assetPath}/${asset}`

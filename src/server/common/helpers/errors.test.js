@@ -23,7 +23,7 @@ describe('#errors', () => {
     })
 
     expect(result).toEqual(
-      expect.stringContaining('Page not found | design-help')
+      expect.stringContaining('Page not found | Defra DDTS Design help')
     )
     expect(statusCode).toBe(statusCodes.notFound)
   })

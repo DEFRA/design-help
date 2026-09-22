@@ -2,7 +2,24 @@
 
 {# Import GOVUK components globally #}
 {% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
-{% from "govuk/components/service-navigation/macro.njk" import govukServiceNavigation %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/character-count/macro.njk" import govukCharacterCount %}
+{% from "govuk/components/details/macro.njk" import govukDetails %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/file-upload/macro.njk" import govukFileUpload %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/panel/macro.njk" import govukPanel %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+{% from "govuk/components/table/macro.njk" import govukTable %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
 
 {# Import custom components globally #}
 {% from "heading/macro.njk" import appHeading %}
@@ -10,11 +27,8 @@
 {% set mainClasses = "app-main-wrapper" %}
 
 {% block headIcons %}
-  <link rel="icon" sizes="48x48" href="{{ getAssetPath("node_modules/govuk-frontend/dist/govuk/assets/images/favicon.ico") }}">
-  <link rel="icon" sizes="any" href="{{ getAssetPath("node_modules/govuk-frontend/dist/govuk/assets/images/favicon.svg") }}" type="image/svg+xml" >
-  <link rel="mask-icon" href="{{ getAssetPath("node_modules/govuk-frontend/dist/govuk/assets/images/govuk-icon-mask.svg") }}" color="{{ themeColor }}">
-  <link rel="apple-touch-icon" href="{{ getAssetPath("node_modules/govuk-frontend/dist/govuk/assets/images/govuk-icon-180.png") }}">
-  <link rel="manifest" href="{{ getAssetPath("node_modules/govuk-frontend/dist/govuk/assets/manifest.json") }}">
+  <link rel="icon" sizes="any" href="{{ getAssetPath("src/client/assets/images/defra-favicon.svg") }}" type="image/svg+xml">
+  <link rel="mask-icon" href="{{ getAssetPath("src/client/assets/images/defra-favicon.svg") }}" color="#005a30">
 {% endblock %}
 
 {% block head %}
@@ -22,19 +36,54 @@
 {% endblock %}
 
 {% block header %}
-  {# serviceName being used in govukHeader will be @deprecated in v6. It has moved to govukServiceNavigation - https://github.com/alphagov/govuk-frontend/blob/main/CHANGELOG.md#move-service-name-and-navigation-links-from-the-govuk-header-to-service-navigation-component #}
-  {{ govukHeader({
-    homepageUrl: "https://www.gov.uk/",
-    classes: "app-header",
-    containerClasses: "govuk-width-container",
-    serviceName: serviceName,
-    serviceUrl: serviceUrl,
-    useTudorCrown: true
-  }) }}
-
-  {{ govukServiceNavigation({
-    navigation: navigation
-  }) }}
+  <header class="design-help-brand-header" role="banner">
+    <div class="govuk-width-container">
+      <a class="design-help-brand-header__link" href="/" aria-label="Defra DDTS Design help homepage">
+        <span class="design-help-brand-header__title">{{ serviceName }}</span>
+      </a>
+    </div>
+  </header>
+  {% if user %}
+    <section class="govuk-service-navigation" aria-label="Menu">
+      <div class="govuk-width-container">
+        <div class="govuk-service-navigation__container design-help-nav__container">
+          <nav class="govuk-service-navigation__wrapper design-help-nav__wrapper" aria-label="Navigation">
+            <ul class="govuk-service-navigation__list">
+              {% for item in navigation %}
+                <li class="govuk-service-navigation__item {{ 'govuk-service-navigation__item--active' if item.current }}">
+                  <a class="govuk-service-navigation__link" href="{{ item.href }}">{{ item.text }}</a>
+                </li>
+              {% endfor %}
+            </ul>
+          </nav>
+          <div class="design-help-nav__account">
+            {% if isAdmin %}
+              <a class="govuk-link govuk-link--no-visited-state" href="/admin/users">Admin</a>
+            {% endif %}
+            <div class="design-help-nav__account-group">
+              <div class="design-help-nav__account-stack">
+                <a class="govuk-link govuk-link--no-visited-state" href="/my-profile">My profile</a>
+              </div>
+              <form method="post" action="/sign-out" class="design-help-nav__signout-form">
+                <input type="hidden" name="crumb" value="{{ crumb }}">
+                <button type="submit" class="design-help-nav__signout-button govuk-link govuk-link--no-visited-state">Sign out</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  {% else %}
+    <section class="govuk-service-navigation" aria-label="Sign in menu">
+      <div class="govuk-width-container">
+        <nav class="govuk-!-padding-top-2 govuk-!-padding-bottom-2" aria-label="Account shortcuts">
+          <ul class="govuk-list govuk-!-margin-bottom-0 design-help-signin-list">
+            <li><a class="govuk-link govuk-link--no-visited-state" href="/sign-in">Sign in</a></li>
+          </ul>
+        </nav>
+      </div>
+    </section>
+  {% endif %}
 {% endblock %}
 
 {% block pageTitle %}
@@ -52,24 +101,39 @@
 {% block content %}{% endblock %}
 
 {% block footer %}
-  {{ govukFooter({
-    meta: {
-      items: [
-        {
-          href: "https://www.gov.uk/help/privacy-notice",
-          text: "Privacy"
-        },
-        {
-          href: "https://www.gov.uk/help/cookies",
-          text: "Cookies"
-        },
-        {
-          href: "https://www.gov.uk/help/accessibility-statement",
-          text: "Accessibility statement"
-        }
-      ]
-    }
-  }) }}
+  {# Footer links (/about, /how-it-has-been-built, /feedback) must stay publicly reachable — keep in step with the public path allow-list in the auth plugin. #}
+  <div class="design-help-footer-shell">
+    <div class="design-help-footer-lead">
+      <div class="govuk-width-container govuk-!-padding-top-6">
+        <div class="govuk-footer__navigation">
+          {% if showFeedbackFooter %}
+            <div class="govuk-footer__section govuk-grid-column-one-half">
+              <h2 class="govuk-footer__heading govuk-heading-s">Help improve Design help</h2>
+              <p class="govuk-body-s govuk-!-margin-bottom-0">
+                <a class="govuk-footer__link" href="{{ feedbackLinkHref }}">Give feedback</a>. It takes about 2 minutes.
+              </p>
+            </div>
+          {% endif %}
+          <div class="govuk-footer__section {{ 'govuk-grid-column-one-half' if showFeedbackFooter else 'govuk-grid-column-full' }}">
+            <h2 class="govuk-footer__heading govuk-heading-s">Design help information</h2>
+            <ul class="govuk-footer__list govuk-!-margin-bottom-0">
+              <li class="govuk-footer__list-item">
+                <a class="govuk-footer__link" href="/about">About Design help</a>
+              </li>
+              <li class="govuk-footer__list-item">
+                <a class="govuk-footer__link" href="/how-it-has-been-built">How it has been built</a>
+              </li>
+            </ul>
+            <p class="govuk-body-s govuk-!-margin-top-4 govuk-!-margin-bottom-0">Version: {{ appVersion }}</p>
+          </div>
+        </div>
+        <hr class="govuk-footer__section-break">
+      </div>
+    </div>
+    {{ govukFooter({
+      classes: "design-help-footer--meta-only"
+    }) }}
+  </div>
 {% endblock %}
 
 {% block bodyEnd %}
