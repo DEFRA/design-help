@@ -1,12 +1,10 @@
-/**
- * A GDS styled example home page controller.
- * Provided as an example, remove or modify as required.
- */
+import { AVAILABLE_TAGS } from '#/server/common/constants/design-help.js'
+
 export const homeController = {
   handler(_request, h) {
     return h.view('home/index', {
-      pageTitle: 'Home',
-      heading: 'Home'
+      pageTitle: 'Find design help',
+      shortcutTags: AVAILABLE_TAGS
     })
   }
 }

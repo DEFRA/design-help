@@ -1,0 +1,99 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      <p class="govuk-body">
+        <a class="govuk-back-link" href="/review/gdad-evidence">Back to review list</a>
+      </p>
+
+      <h1 class="govuk-heading-xl">GDaD evidence — {{ targetName }}</h1>
+      <p class="govuk-body"><strong>Job title:</strong> {{ targetRole }}</p>
+      <p class="govuk-body-s govuk-!-margin-bottom-4">
+        DDaT role level for expected standards: <strong>{{ frameworkRoleLabel }}</strong>
+        · <a class="govuk-link" href="{{ roleExamplesUrl }}" target="_blank" rel="noopener noreferrer">Service designer role on the framework (opens in a new tab)</a>
+        · <a class="govuk-link" href="{{ gdadSkillsMatrixUrl }}">Local skills matrix (PNG)</a>
+      </p>
+
+      <div class="govuk-inset-text govuk-!-margin-bottom-6">
+        <p class="govuk-body govuk-!-margin-bottom-0">
+          Set official scores: <strong>1</strong> below standard, <strong>2</strong> at standard, <strong>3</strong> above standard.
+          <a class="govuk-link" href="{{ roleExamplesUrl }}" target="_blank" rel="noopener noreferrer">DDaT capability framework (opens in a new tab)</a>.
+        </p>
+      </div>
+      {% if not canEditScores %}
+        <div class="govuk-inset-text govuk-!-margin-bottom-6">
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            You can review evidence, but only Head of Design can save official scores.
+          </p>
+        </div>
+      {% endif %}
+
+      {% if justSaved %}
+        {{ govukNotificationBanner({
+          type: "success",
+          text: "Scores saved."
+        }) }}
+      {% endif %}
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
+      <h2 class="govuk-heading-m">Scores and evidence overview</h2>
+      <p class="govuk-body-s govuk-!-margin-bottom-3">
+        Use this table for quick score entry. Open a skill when you need to read full evidence and expected-standard detail.
+      </p>
+
+      <form method="post" action="/review/gdad-evidence/{{ targetPersonId }}" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <div tabindex="0" class="gdad-table-scroll">
+          <table class="govuk-table govuk-!-margin-bottom-6">
+            <caption class="govuk-table__caption govuk-table__caption--m">Current evidence and official scores for {{ targetName }}</caption>
+            <thead class="govuk-table__head">
+              <tr class="govuk-table__row">
+                <th scope="col" class="govuk-table__header">Skill</th>
+                <th scope="col" class="govuk-table__header">Expected level</th>
+                <th scope="col" class="govuk-table__header">Evidence</th>
+                <th scope="col" class="govuk-table__header">Quick score entry</th>
+                <th scope="col" class="govuk-table__header">Detail view</th>
+              </tr>
+            </thead>
+            <tbody class="govuk-table__body">
+              {% for skill in skillRows %}
+                <tr class="govuk-table__row">
+                  <th scope="row" class="govuk-table__header">{{ skill.label }}</th>
+                  <td class="govuk-table__cell">
+                    <strong class="govuk-tag {{ skill.expectedBand.tagClass }}">{{ skill.expectedBand.label }}</strong>
+                  </td>
+                  <td class="govuk-table__cell">{{ "Present" if skill.evidenceText else "None yet" }}</td>
+                  <td class="govuk-table__cell">
+                    <label class="govuk-visually-hidden" for="score-{{ skill.key }}">Score for {{ skill.label }}</label>
+                    <select class="govuk-select" id="score-{{ skill.key }}" name="score_{{ skill.key }}" {% if not canEditScores %}disabled{% endif %}>
+                      <option value="" {% if not skill.officialScore %}selected{% endif %}>Not set</option>
+                      <option value="1" {% if skill.officialScore == 1 %}selected{% endif %}>1 — Below standard</option>
+                      <option value="2" {% if skill.officialScore == 2 %}selected{% endif %}>2 — At standard</option>
+                      <option value="3" {% if skill.officialScore == 3 %}selected{% endif %}>3 — Above standard</option>
+                    </select>
+                  </td>
+                  <td class="govuk-table__cell">
+                    <a class="govuk-link" href="/review/gdad-evidence/{{ targetPersonId }}/{{ skill.key }}">Open evidence and score</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if canEditScores %}
+          <button class="govuk-button" data-module="govuk-button" type="submit">Save scores from table</button>
+        {% endif %}
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

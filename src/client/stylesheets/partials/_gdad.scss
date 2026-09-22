@@ -1,0 +1,7 @@
+// GDaD module styles (see routes/gdad)
+
+// Horizontally scrollable wrapper for wide GDaD tables — the prototype used
+// an inline style, which the CSP strips here
+.gdad-table-scroll {
+  overflow-x: auto;
+}

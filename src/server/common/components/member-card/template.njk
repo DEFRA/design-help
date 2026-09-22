@@ -1,0 +1,68 @@
+{% set member = params.member %}
+<div class="app-member-card">
+  <h2 class="govuk-heading-m app-member-card__name">
+    <a href="{{ member.path }}" class="govuk-link govuk-link--no-visited-state">
+      {{ member.name }}
+    </a>
+  </h2>
+  {% if params.showEditLink %}
+    <p class="govuk-body-s app-member-card__edit">
+      <a href="/my-profile/edit" class="govuk-link govuk-link--no-visited-state">Edit my profile</a>
+    </p>
+  {% endif %}
+
+  <p class="govuk-body-s app-member-card__role">
+    {{ member.role }}
+  </p>
+
+  <p class="govuk-body-s app-member-card__facts">
+    <strong>Experience:</strong> {{ member.experience }}<br>
+    <strong>Location:</strong> {{ member.location }}
+  </p>
+
+  {% if member.availabilityStatus == "Free to help" %}
+    <strong class="govuk-tag govuk-tag--green">Free to help</strong>
+  {% elif member.availabilityStatus == "Some capacity" %}
+    <strong class="govuk-tag govuk-tag--blue">Some capacity</strong>
+  {% else %}
+    <strong class="govuk-tag govuk-tag--grey">Busy</strong>
+  {% endif %}
+
+  <details class="govuk-details app-member-card__details">
+    <summary class="govuk-details__summary">
+      <span class="govuk-details__summary-text">
+        Can help with
+      </span>
+    </summary>
+    <div class="govuk-details__text">
+      {% if member.canHelpWith and member.canHelpWith.length %}
+        <ul class="govuk-list govuk-list--bullet {% if member.canHelpWithText %}govuk-!-margin-bottom-2{% else %}govuk-!-margin-bottom-0{% endif %}">
+          {% for help in member.canHelpWith %}
+            <li>{{ help }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if member.canHelpWithText %}
+        {{ member.canHelpWithText | markdownToGovukHtml }}
+      {% endif %}
+      {% if (not member.canHelpWith or member.canHelpWith.length == 0) and not member.canHelpWithText %}
+        <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-hint">No “can help with” detail added yet.</p>
+      {% endif %}
+    </div>
+  </details>
+
+  <details class="govuk-details app-member-card__details">
+    <summary class="govuk-details__summary">
+      <span class="govuk-details__summary-text">
+        Development goals
+      </span>
+    </summary>
+    <div class="govuk-details__text">
+      {% if member.developmentGoalsText %}
+        {{ member.developmentGoalsText | markdownToGovukHtml }}
+      {% else %}
+        <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-hint">No development goals added yet.</p>
+      {% endif %}
+    </div>
+  </details>
+</div>

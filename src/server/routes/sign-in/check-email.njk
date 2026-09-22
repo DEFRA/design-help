@@ -1,0 +1,20 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">Check your email</h1>
+
+      <p class="govuk-body">
+        If <strong>{{ email or "your email address" }}</strong> has access to Design help, we have sent it a sign-in link.
+      </p>
+      <p class="govuk-body">
+        The link works once and expires after 15 minutes.
+      </p>
+      <p class="govuk-body">
+        If nothing arrives, check the address is right and that you have been given access, then
+        <a class="govuk-link govuk-link--no-visited-state" href="/sign-in">try again</a>.
+      </p>
+    </div>
+  </div>
+{% endblock %}

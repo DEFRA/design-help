@@ -1,0 +1,31 @@
+.app-member-card {
+  border: 1px solid #b1b4b6;
+  padding: 20px;
+  min-height: 100%;
+
+  &__name {
+    margin-bottom: 0.5em;
+  }
+
+  &__edit {
+    margin-bottom: 0.5em;
+  }
+
+  &__role {
+    color: #505a5f;
+    margin-bottom: 1em;
+  }
+
+  &__facts {
+    margin-bottom: 1em;
+  }
+
+  &__details {
+    margin-top: 1em;
+    margin-bottom: 0;
+  }
+}
+
+.app-member-card-column {
+  margin-bottom: 2em;
+}

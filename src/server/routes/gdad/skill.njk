@@ -1,0 +1,73 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <p class="govuk-body">
+        <a class="govuk-back-link" href="/my-gdad-evidence">Back to GDaD evidence overview</a>
+      </p>
+
+      <h1 class="govuk-heading-xl">{{ skill.label }}</h1>
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="{{ skill.frameworkUrl }}" target="_blank" rel="noopener noreferrer">Full skill description on the DDaT framework (opens in a new tab)</a>
+        · <a class="govuk-link" href="{{ frameworkRolePageUrl }}" target="_blank" rel="noopener noreferrer">Designer role — {{ frameworkRoleLabel }} (opens in a new tab)</a>
+        · <a class="govuk-link" href="{{ gdadSkillsMatrixUrl }}">Local skills matrix (PNG)</a>
+      </p>
+
+      <div class="govuk-inset-text">
+        <p class="govuk-body govuk-!-margin-bottom-2">
+          <strong>Expected standard for this skill:</strong>
+          <strong class="govuk-tag {{ skill.expectedBand.tagClass }}">{{ skill.expectedBand.label }}</strong>
+        </p>
+        <p class="govuk-body-s govuk-!-margin-bottom-0">{{ skill.expectedBand.description }}</p>
+      </div>
+
+      <p class="govuk-body">
+        <strong>Official score:</strong>
+        {% if skill.officialScore %}
+          <strong class="govuk-tag govuk-tag--blue">{{ skill.officialScore }} — {{ skill.scoreLabel }}</strong>
+        {% else %}
+          <span class="govuk-hint govuk-!-margin-bottom-0">Not yet set — this will appear after review by your line manager or head of profession.</span>
+        {% endif %}
+      </p>
+
+      {% if skill.gradedLevel %}
+        <p class="govuk-body">
+          <strong>Graded level</strong> (from your score against the expected level above):
+          <strong class="govuk-tag {{ skill.gradedLevel.tagClass }}">{{ skill.gradedLevel.label }}</strong>
+          <span class="govuk-visually-hidden">. {{ skill.gradedLevel.summary }}</span>
+        </p>
+      {% endif %}
+
+      {% if justSaved %}
+        {{ govukNotificationBanner({
+          type: "success",
+          text: "Evidence saved"
+        }) }}
+      {% endif %}
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
+      <form method="post" action="/my-gdad-evidence/{{ skill.key }}" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <div class="govuk-hint">{{ skill.starHint }}</div>
+
+        <div class="govuk-form-group govuk-character-count govuk-!-margin-top-4" data-module="govuk-character-count" data-maxlength="12000">
+          <label class="govuk-label govuk-label--m" for="evidence-{{ skill.key }}">Your evidence (STAR)</label>
+          <textarea class="govuk-textarea govuk-js-character-count" id="evidence-{{ skill.key }}" name="evidence_{{ skill.key }}" rows="12" aria-describedby="evidence-{{ skill.key }}-info">{{ skill.evidenceText }}</textarea>
+          <div id="evidence-{{ skill.key }}-info" class="govuk-hint govuk-character-count__message">You can enter up to 12,000 characters</div>
+        </div>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">Save evidence</button>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

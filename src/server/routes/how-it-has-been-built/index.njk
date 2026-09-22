@@ -1,0 +1,70 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">How Design help has been built</h1>
+
+      <p class="govuk-body">
+        This page explains how we built Design help in practice. It covers the tools we used, where it runs, what we changed for Defra, and how we used AI to help write the code. We wrote it so people who use or look after the tool can see how it was made. It is not a formal document for buying or auditing the service.
+      </p>
+
+      <h2 class="govuk-heading-m">How we used Cursor and AI to write the code</h2>
+      <p class="govuk-body">
+        We used <strong>AI-supported development</strong> for almost all of the coding. Most of that work happened in the <a class="govuk-link" href="https://cursor.com/">Cursor</a> editor. We used <strong>agent-style</strong> flows: you describe the task in plain language, the tool can change several files at once, and it can suggest commands. A person still checks the result in the browser and decides what to keep.
+      </p>
+      <p class="govuk-body">
+        The maintainer is not a full-time developer. This way of working meant we could cover more in less time than we would expect from one person working only by hand.
+      </p>
+      <p class="govuk-body">
+        The work was iterative and conversational. Some people call that informally &ldquo;vibe coding&rdquo;. The maintainer set the direction, tested what changed, and chose what to merge.
+      </p>
+      <p class="govuk-body">
+        This approach is <strong>not</strong> the same as a full delivery team with strong checks for a high-scale public service. It <strong>is</strong> a deliberate test of how far we can get with modern AI tools when the audience is smaller and the risks are clearer.
+      </p>
+
+      <h2 class="govuk-heading-m">GOV.UK Frontend and accessibility</h2>
+      <p class="govuk-body">
+        The service started life in the <a class="govuk-link" href="https://prototype-kit.service.gov.uk/docs">GOV.UK Prototype Kit</a> and has since been rebuilt on Defra&rsquo;s Core Delivery Platform service templates, which also use <strong>GOV.UK Frontend</strong> and patterns people already know from GOV.UK services.
+      </p>
+      <p class="govuk-body">
+        <strong>Accessibility</strong> matters. We want journeys to be clear and easy to use, including for people who use assistive technology. GOV.UK Frontend does not by itself prove we meet every WCAG success criterion. It does give a solid starting point: sensible page structure, typography, visible focus, and many components that are built with accessibility in mind.
+      </p>
+      <p class="govuk-body">
+        We kept Defra-specific styling light so we were less likely to weaken that starting point by accident.
+      </p>
+
+      <h2 class="govuk-heading-m">Defra branding and layout</h2>
+      <p class="govuk-body">
+        This version of the service is <strong>Defra-only</strong> in its look and wording. We changed the default <strong>header</strong>, built a custom <strong>footer</strong>, and adjusted the navigation strip, favicon, and colours. These are presentation changes. We tried to stay close to familiar GOV.UK behaviour and patterns.
+      </p>
+
+      <h2 class="govuk-heading-m">Where it runs</h2>
+      <p class="govuk-body">
+        The live service runs on Defra&rsquo;s <strong>Core Delivery Platform</strong> (CDP), the department&rsquo;s internal hosting platform. It is made up of a frontend service and a backend API, and data is stored in a <strong>MongoDB</strong> database managed by the platform. Sign-in and sessions need those services to be running and set up correctly.
+      </p>
+
+      <h2 class="govuk-heading-m">Security</h2>
+      <div class="govuk-inset-text">
+        <p class="govuk-body govuk-!-margin-bottom-0">
+          We have <strong>not</strong> run strong, independent security testing on the tool. For example we have not had a penetration test or a full threat-model exercise. We rely on sensible defaults from the GOV.UK and Defra service templates, the Core Delivery Platform, and on being careful about what data we hold.
+        </p>
+      </div>
+      <p class="govuk-body govuk-!-margin-top-4">
+        For how the service is used today, we think the <strong>security risk is relatively low</strong>. It supports an internal design community, the audience is limited, and it does less than a live government transaction service. We should <strong>review that view if more people use it, if we hold more sensitive data, or if we add new systems that connect to it</strong>. If the role of the service grows, we would expect more testing and clearer governance, and we might need to change how it is built.
+      </p>
+
+      <h2 class="govuk-heading-m">Working in the open about this build</h2>
+      <p class="govuk-body">
+        Part of building this way was an <strong>experiment</strong>. We wanted to see if we could ship something useful quickly with AI help and a clear brief from a person. Similar work might once have needed several people over several weeks.
+      </p>
+      <p class="govuk-body">
+        There are trade-offs: you can move fast, but you may do less deep review. You can explore ideas, but you may be less consistent than a larger team. Working in the open about those trade-offs helps us judge when this way of working is good enough — and when we need a different approach.
+      </p>
+
+      <p class="govuk-body">
+        <a class="govuk-link govuk-link--no-visited-state" href="/about">Back to About Design help</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <p class="govuk-body">
+        <a href="/admin/users" class="govuk-back-link">Back to admin</a>
+      </p>
+
+      {% if kind == 'profile' %}
+        <h1 class="govuk-heading-xl">Remove this person?</h1>
+        <p class="govuk-body">
+          Are you sure you want to remove <strong>{{ profile.name }}</strong>? All profile data will be lost. This cannot be undone.
+        </p>
+        <form method="post" action="/admin/profile/{{ profileId }}/delete" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          {% if displayEmail %}
+            <div class="govuk-inset-text">
+              <p class="govuk-body">
+                If you only remove the profile, <strong>{{ displayEmail }}</strong> can stay on the allowed list. The row can then show as <strong>Pending</strong> until you remove the email or they register.
+              </p>
+              <div class="govuk-form-group">
+                <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+                  <div class="govuk-checkboxes__item">
+                    <input class="govuk-checkboxes__input" id="remove-approved" name="remove_approved" type="checkbox" value="yes" checked>
+                    <label class="govuk-label govuk-checkboxes__label" for="remove-approved">
+                      Also remove {{ displayEmail }} from the allowed list (they will not be able to register until an admin adds them again)
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <p class="govuk-body">There is no matching allowlist entry for this profile&rsquo;s work email, or the work email is missing. Only the profile will be removed.</p>
+          {% endif %}
+          <div class="govuk-button-group">
+            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Yes, remove</button>
+            <a class="govuk-link govuk-link--no-visited-state" href="/admin/users">No, cancel</a>
+          </div>
+        </form>
+
+      {% elif kind == 'email' %}
+        <h1 class="govuk-heading-xl">Remove this email from the allowed list?</h1>
+        <p class="govuk-body">
+          Are you sure? <strong>{{ emailRow.email }}</strong> will not be able to register until an admin adds them again.
+        </p>
+        <form method="post" action="/admin/approved-emails/{{ emailRow.id }}/delete" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          <div class="govuk-button-group">
+            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Yes, remove</button>
+            <a class="govuk-link govuk-link--no-visited-state" href="/admin/users">No, cancel</a>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

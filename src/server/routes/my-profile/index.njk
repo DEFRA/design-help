@@ -1,0 +1,75 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">My profile</h1>
+
+      {% if profile %}
+        <div class="govuk-button-group">
+          <a href="/my-profile/edit" class="govuk-button" data-module="govuk-button">Edit my profile</a>
+          <a href="/my-profile/helping" class="govuk-button govuk-button--secondary" data-module="govuk-button">I&rsquo;m helping someone</a>
+          {% if gdadEvidenceApplicable %}
+            <a href="/my-gdad-evidence" class="govuk-button govuk-button--secondary" data-module="govuk-button">Submit your GDaD evidence</a>
+          {% endif %}
+        </div>
+
+        {% if gdadEvidenceApplicable %}
+          <h2 class="govuk-heading-m govuk-!-margin-top-6">GDaD design skills evidence</h2>
+          <p class="govuk-body">
+            Add or update STAR-style evidence for each of the seven DDaT design skills. You can save each skill and return later. <a class="govuk-link" href="/my-gdad-evidence">Go to your GDaD evidence overview</a>.
+          </p>
+        {% endif %}
+
+        <dl class="govuk-summary-list">
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Name</dt>
+            <dd class="govuk-summary-list__value">{{ profile.name }}</dd>
+          </div>
+          {% if profile.email or profile.contactEmail %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Email</dt>
+              <dd class="govuk-summary-list__value">
+                <a class="govuk-link" href="mailto:{{ profile.email or profile.contactEmail }}">{{ profile.email or profile.contactEmail }}</a>
+              </dd>
+            </div>
+          {% endif %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Job title</dt>
+            <dd class="govuk-summary-list__value">{{ profile.role }}</dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Availability</dt>
+            <dd class="govuk-summary-list__value">{{ profile.availabilityStatus }}</dd>
+          </div>
+          {% if helpingPeople.length %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Long-term help (who I&rsquo;m helping)</dt>
+              <dd class="govuk-summary-list__value">
+                <ul class="govuk-list">
+                  {% for h in helpingPeople %}
+                    <li><a class="govuk-link" href="{{ h.path }}">{{ h.name }}</a></li>
+                  {% endfor %}
+                </ul>
+              </dd>
+            </div>
+          {% endif %}
+        </dl>
+
+        {% if profile.canHelpWith and profile.canHelpWith.length %}
+          <h2 class="govuk-heading-m">Can help with tags</h2>
+          <ul class="govuk-list govuk-list--bullet">
+            {% for item in profile.canHelpWith %}
+              <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% else %}
+        <p class="govuk-body">You do not have a profile yet.</p>
+        <p class="govuk-body">
+          <a href="/my-profile/edit" class="govuk-button" data-module="govuk-button">Create my profile</a>
+        </p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

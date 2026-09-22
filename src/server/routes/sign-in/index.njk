@@ -1,0 +1,53 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">Sign in</h1>
+
+      <p class="govuk-body">
+        Enter your Defra email address and we will send you a sign-in link. No password needed.
+      </p>
+
+      {% if errorMessage %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [
+            {
+              text: errorMessage,
+              href: "#email"
+            }
+          ]
+        }) }}
+      {% endif %}
+
+      <form method="post" action="/sign-in" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+
+        {{ govukInput({
+          label: {
+            text: "Email address"
+          },
+          hint: {
+            text: "Use your defra.gov.uk email address"
+          },
+          id: "email",
+          name: "email",
+          type: "email",
+          value: email,
+          autocomplete: "email",
+          spellcheck: false,
+          errorMessage: { text: errorMessage } if errorMessage
+        }) }}
+
+        {{ govukButton({
+          text: "Send sign-in link"
+        }) }}
+      </form>
+
+      <p class="govuk-body">
+        If you do not have access yet, speak to your line manager or an administrator of Design help.
+      </p>
+    </div>
+  </div>
+{% endblock %}

@@ -19,7 +19,7 @@ describe('#aboutController', () => {
       url: '/about'
     })
 
-    expect(result).toEqual(expect.stringContaining('About |'))
+    expect(result).toEqual(expect.stringContaining('About Design help |'))
     expect(statusCode).toBe(statusCodes.ok)
   })
 })

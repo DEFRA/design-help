@@ -1,0 +1,82 @@
+{% extends 'layouts/page.njk' %}
+
+{% macro memberGrid(members, isAdmin) %}
+  {% for member in members %}
+    {% if loop.index0 % 2 == 0 %}
+      <div class="govuk-grid-row">
+    {% endif %}
+    <div class="govuk-grid-column-one-half app-member-card-column">
+      {{ appMemberCard({
+        member: member,
+        showEditLink: (not isAdmin) and member.isOwnProfile
+      }) }}
+    </div>
+    {% if loop.index0 % 2 == 1 or loop.last %}
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+
+      <h1 class="govuk-heading-xl">
+        {% if filterText %}
+          Team members who can help with {{ filterText | lower }}
+        {% else %}
+          Browse team members
+        {% endif %}
+      </h1>
+
+      <p class="govuk-body">
+        <a href="/my-profile" class="govuk-button" data-module="govuk-button">
+          My profile
+        </a>
+      </p>
+
+      <h2 class="govuk-heading-m">Search and sort</h2>
+      <form method="get" action="/browse" class="govuk-!-margin-bottom-4">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="browse-filter">Search (change your filter)</label>
+          <div class="govuk-hint" id="browse-filter-hint">Matches “can help with” tags, extra profile text, role and name.</div>
+          <input class="govuk-input" id="browse-filter" name="filter" type="search" value="{{ filterText or '' }}"
+            aria-describedby="browse-filter-hint" autocomplete="off"
+            placeholder="e.g. coaching, Figma, accessibility">
+        </div>
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="sort">Display order</label>
+          <select class="govuk-select" id="sort" name="sort">
+            <option value="a-z" {{ "selected" if sort == "a-z" else "" }}>Alphabetical (A to Z)</option>
+            <option value="z-a" {{ "selected" if sort == "z-a" else "" }}>Alphabetical (Z to A)</option>
+            <option value="profession" {{ "selected" if sort == "profession" else "" }}>Group by profession</option>
+          </select>
+        </div>
+        <div class="govuk-button-group">
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">
+            Apply
+          </button>
+          {% if filterText %}
+            <a class="govuk-link govuk-link--no-visited-state app-clear-filter-link" href="{% if sort and sort != 'a-z' %}/browse?sort={{ sort }}{% else %}/browse{% endif %}">Clear filter and show all team members</a>
+          {% endif %}
+        </div>
+      </form>
+
+      {% if filteredMembers.length > 0 %}
+        {% if sort == "profession" %}
+          {% for group in groupedMembers %}
+            <h2 class="govuk-heading-l">{{ group.groupName }}</h2>
+            {{ memberGrid(group.members, isAdmin) }}
+          {% endfor %}
+        {% else %}
+          {{ memberGrid(filteredMembers, isAdmin) }}
+        {% endif %}
+      {% else %}
+        <p class="govuk-body">No team members found matching your criteria. Try a different search in the “Search and sort” section, or
+          <a class="govuk-link" href="{% if sort and sort != 'a-z' %}/browse?sort={{ sort }}{% else %}/browse{% endif %}">view all team members</a>.
+        </p>
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}

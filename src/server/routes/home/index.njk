@@ -1,17 +1,45 @@
 {% extends 'layouts/page.njk' %}
 
 {% block content %}
-  {{ appHeading({
-    text: heading,
-    caption: "design-help"
-  }) }}
-
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <div class="govuk-body" data-testid="app-page-body">
-        <p></p>
-      </div>
+      <h1 class="govuk-heading-xl">
+        Find someone to help you
+      </h1>
+
+      <p class="govuk-body-l">
+        Connect with designers in the team for coaching, mentoring, design critiques and advice.
+      </p>
+
+      {% if not user %}
+        <p class="govuk-body">
+          <a class="govuk-link govuk-link--no-visited-state" href="/sign-in">Sign in</a>
+          to use the directory and your profile.
+        </p>
+      {% endif %}
+
+      <h2 class="govuk-heading-m">What do you need help with?</h2>
+
+      <p class="govuk-body">
+        Each link runs a search across team members’ profiles: their
+        <strong>can help with</strong> tags, the free text they add, and their job title.
+        For longer-term support, use the <a class="govuk-link govuk-link--no-visited-state" href="/requests">Requests</a>
+        page where people describe what they would like help with.
+      </p>
+
+      <ul class="govuk-list">
+        {% for tag in shortcutTags %}
+          <li>
+            <a class="govuk-link govuk-link--no-visited-state" href="/browse?filter={{ tag | urlencode }}">
+              {{ tag }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <p class="govuk-body govuk-!-margin-top-6">
+        <a href="/browse" class="govuk-link govuk-link--no-visited-state">Browse all team members</a>
+      </p>
     </div>
   </div>
-
 {% endblock %}

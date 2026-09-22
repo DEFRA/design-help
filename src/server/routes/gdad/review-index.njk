@@ -1,0 +1,143 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      {% set adminToolsActiveTab = 'gdad' %}
+      {% include "partials/admin-tools-nav.njk" %}
+      <h1 class="govuk-heading-xl">Review GDaD evidence</h1>
+      <p class="govuk-body">
+        Designers on the GDaD design skills path are shown here. Accessibility specialist and resource manager job titles are excluded.
+      </p>
+      {% if gdadReviewerRole == 'line_manager' %}
+        <p class="govuk-body">
+          You only see designers assigned to you as their responsible manager. You can review and set scores for them.
+        </p>
+      {% elif gdadReviewerRole == 'admin' %}
+        <p class="govuk-body">
+          You only see designers who do not yet have a responsible manager assigned.
+        </p>
+      {% endif %}
+      {% if gdadReviewerRole == 'hod' %}
+        <p class="govuk-body">
+          <a class="govuk-link" href="/review/gdad-evidence/export.csv">Export all scores (CSV)</a>
+        </p>
+      {% elif gdadReviewerRole == 'line_manager' or gdadReviewerRole == 'admin' %}
+        <p class="govuk-body">
+          <a class="govuk-link" href="/review/gdad-evidence/export.csv">Export scores you can access (CSV)</a>
+        </p>
+      {% endif %}
+
+      {% if not rowsNoOrIncompleteEvidence.length and not rowsEvidenceUnscored.length and not rowsScoredEvidence.length %}
+        {% if gdadReviewerRole == 'line_manager' %}
+          <p class="govuk-body">No designers are assigned to you as responsible manager yet.</p>
+        {% elif gdadReviewerRole == 'admin' %}
+          <p class="govuk-body">No unassigned designers with a GDaD-applicable job title right now.</p>
+        {% else %}
+          <p class="govuk-body">No designer profiles use a GDaD-applicable job title yet.</p>
+        {% endif %}
+      {% else %}
+
+        <h2 class="govuk-heading-m">No evidence or incomplete evidence</h2>
+        <p class="govuk-body">
+          People in this group have evidence on fewer than all {{ skillCount }} skills (including none at all).
+        </p>
+
+        {% if rowsNoOrIncompleteEvidence and rowsNoOrIncompleteEvidence.length %}
+          <table class="govuk-table govuk-!-margin-bottom-8">
+            <thead class="govuk-table__head">
+              <tr class="govuk-table__row">
+                <th scope="col" class="govuk-table__header">Name</th>
+                <th scope="col" class="govuk-table__header">Job title</th>
+                <th scope="col" class="govuk-table__header">Skills with evidence</th>
+                <th scope="col" class="govuk-table__header">Last evidence update</th>
+                <th scope="col" class="govuk-table__header">Action</th>
+              </tr>
+            </thead>
+            <tbody class="govuk-table__body">
+              {% for row in rowsNoOrIncompleteEvidence %}
+                <tr class="govuk-table__row">
+                  <td class="govuk-table__cell">{{ row.name }}</td>
+                  <td class="govuk-table__cell">{{ row.role }}</td>
+                  <td class="govuk-table__cell">{{ row.skillsWithEvidence }} / {{ skillCount }}</td>
+                  <td class="govuk-table__cell">{{ row.lastEvidenceLabel or "—" }}</td>
+                  <td class="govuk-table__cell">
+                    <a class="govuk-link" href="/review/gdad-evidence/{{ row.id }}">Open evidence and scores</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="govuk-body govuk-!-margin-bottom-8">Everyone eligible has complete evidence.</p>
+        {% endif %}
+
+        <h2 class="govuk-heading-m">Evidence unscored</h2>
+        <p class="govuk-body">
+          People in this group have evidence on all {{ skillCount }} skills but not all scores are set yet.
+        </p>
+
+        {% if rowsEvidenceUnscored and rowsEvidenceUnscored.length %}
+          <table class="govuk-table govuk-!-margin-bottom-8">
+            <thead class="govuk-table__head">
+              <tr class="govuk-table__row">
+                <th scope="col" class="govuk-table__header">Name</th>
+                <th scope="col" class="govuk-table__header">Job title</th>
+                <th scope="col" class="govuk-table__header">Scores set</th>
+                <th scope="col" class="govuk-table__header">Action</th>
+              </tr>
+            </thead>
+            <tbody class="govuk-table__body">
+              {% for row in rowsEvidenceUnscored %}
+                <tr class="govuk-table__row">
+                  <td class="govuk-table__cell">{{ row.name }}</td>
+                  <td class="govuk-table__cell">{{ row.role }}</td>
+                  <td class="govuk-table__cell">{{ row.skillsScored }} / {{ skillCount }}</td>
+                  <td class="govuk-table__cell">
+                    <a class="govuk-link" href="/review/gdad-evidence/{{ row.id }}">Open evidence and scores</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="govuk-body govuk-!-margin-bottom-8">No-one is waiting for scoring once evidence is complete.</p>
+        {% endif %}
+
+        <h2 class="govuk-heading-m">Scored evidence</h2>
+        <p class="govuk-body">
+          People in this group have all {{ skillCount }} skill scores set.
+        </p>
+
+        {% if rowsScoredEvidence and rowsScoredEvidence.length %}
+          <table class="govuk-table">
+            <thead class="govuk-table__head">
+              <tr class="govuk-table__row">
+                <th scope="col" class="govuk-table__header">Name</th>
+                <th scope="col" class="govuk-table__header">Job title</th>
+                <th scope="col" class="govuk-table__header">Scores set</th>
+                <th scope="col" class="govuk-table__header">Action</th>
+              </tr>
+            </thead>
+            <tbody class="govuk-table__body">
+              {% for row in rowsScoredEvidence %}
+                <tr class="govuk-table__row">
+                  <td class="govuk-table__cell">{{ row.name }}</td>
+                  <td class="govuk-table__cell">{{ row.role }}</td>
+                  <td class="govuk-table__cell">{{ row.skillsScored }} / {{ skillCount }}</td>
+                  <td class="govuk-table__cell">
+                    <a class="govuk-link" href="/review/gdad-evidence/{{ row.id }}">Open evidence and scores</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="govuk-body">No-one has all skill scores set yet.</p>
+        {% endif %}
+
+      {% endif %}
+
+    </div>
+  </div>
+{% endblock %}
