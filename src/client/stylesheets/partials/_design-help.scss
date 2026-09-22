@@ -247,6 +247,19 @@ $design-help-border: #b1b4b6;
   color: $design-help-ink !important;
 }
 
+// Browse: clear-filter link sits beside the Apply button
+.app-clear-filter-link {
+  align-self: center;
+  padding: 0.5em 0 0.5em 0.5em;
+}
+
+// Offers/Requests: left-accented free text entries
+.app-freetext-entry {
+  border-left: 4px solid $design-help-border;
+  padding-left: 12px;
+  margin-bottom: 16px;
+}
+
 // Admin tools: horizontal text links at top of admin content
 .design-help-admin-tools__list {
   display: flex;

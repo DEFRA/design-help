@@ -1,0 +1,112 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      {% if errors %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">
+            There is a problem
+          </h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              {% if errors._form %}
+                <li><a href="#feedback-details">{{ errors._form }}</a></li>
+              {% endif %}
+              {% if errors.details %}
+                <li><a href="#feedback-details">{{ errors.details }}</a></li>
+              {% endif %}
+              {% if errors.contact_email %}
+                <li><a href="#contact-email">{{ errors.contact_email }}</a></li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">Give feedback</h1>
+
+      <p class="govuk-body">
+        Use this form to tell us about your experience of Design help — what worked, what did not, or something that was unclear. We read all feedback and use it to improve the service.
+      </p>
+
+      <p class="govuk-body">
+        This is <strong>not</strong> for line management, HR, or complaints about colleagues. For those, use your usual Defra channels.
+      </p>
+
+      <form action="/feedback" method="post" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <input type="hidden" name="return_path" value="{{ returnPath }}">
+
+        <div class="govuk-form-group">
+          <fieldset class="govuk-fieldset">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              How easy was it to use this service?
+            </legend>
+            <div id="how-easy-hint" class="govuk-hint">
+              Optional. If you skip this, you can still send feedback below.
+            </div>
+            <div class="govuk-radios" data-module="govuk-radios">
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="how-easy-skip" name="how_easy" type="radio" value="" {% if not values.how_easy %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="how-easy-skip">
+                  Prefer not to say
+                </label>
+              </div>
+              {% for option in howEasyOptions %}
+                <div class="govuk-radios__item">
+                  <input class="govuk-radios__input" id="how-easy-{{ loop.index }}" name="how_easy" type="radio" value="{{ option }}" {% if values.how_easy == option %}checked{% endif %}>
+                  <label class="govuk-label govuk-radios__label" for="how-easy-{{ loop.index }}">
+                    {{ option }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </fieldset>
+        </div>
+
+        <div class="govuk-form-group govuk-character-count {% if errors and errors.details %}govuk-form-group--error{% endif %}" data-module="govuk-character-count" data-maxlength="4000">
+          <label class="govuk-label govuk-label--m" for="feedback-details">
+            Your feedback
+          </label>
+          <div id="feedback-details-hint" class="govuk-hint">
+            For example, what you were trying to do, what went wrong, or what would have helped. You can use Markdown for links and bullet points. Do not include passwords or sensitive personal data.
+          </div>
+          {% if errors and errors.details %}
+            <p id="feedback-details-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.details }}
+            </p>
+          {% endif %}
+          <textarea class="govuk-textarea govuk-js-character-count {% if errors and errors.details %}govuk-textarea--error{% endif %}" id="feedback-details" name="details" rows="8"
+            aria-describedby="feedback-details-hint{% if errors and errors.details %} feedback-details-error{% endif %} feedback-details-info">{{ values.details }}</textarea>
+          <div id="feedback-details-info" class="govuk-hint govuk-character-count__message">
+            You can enter up to 4000 characters
+          </div>
+        </div>
+
+        <div class="govuk-form-group {% if errors and errors.contact_email %}govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--m" for="contact-email">
+            Your email address (optional)
+          </label>
+          <div id="contact-email-hint" class="govuk-hint">
+            We may contact you if we need more detail. We do not reply to every message.
+          </div>
+          {% if errors and errors.contact_email %}
+            <p id="contact-email-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.contact_email }}
+            </p>
+          {% endif %}
+          <input class="govuk-input {% if errors and errors.contact_email %}govuk-input--error{% endif %}" id="contact-email" name="contact_email" type="email" autocomplete="email" spellcheck="false"
+            aria-describedby="contact-email-hint{% if errors and errors.contact_email %} contact-email-error{% endif %}"
+            value="{{ values.contact_email }}">
+        </div>
+
+        <button type="submit" class="govuk-button" data-module="govuk-button">
+          Send feedback
+        </button>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <p class="govuk-body">
+        <a href="/browse" class="govuk-back-link">Back</a>
+      </p>
+
+      <h1 class="govuk-heading-xl">
+        {% if profile and profile.name %}Update your profile{% else %}Create my profile{% endif %}
+      </h1>
+
+      {% if success %}
+        {% set successHtml %}
+          <h3 class="govuk-notification-banner__heading">Profile saved successfully</h3>
+          <p class="govuk-body">
+            <a class="govuk-notification-banner__link" href="/my-profile">View my profile</a> or
+            <a class="govuk-notification-banner__link" href="/browse">browse all team members</a>
+          </p>
+        {% endset %}
+        {{ govukNotificationBanner({ type: "success", html: successHtml }) }}
+      {% endif %}
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
+      <form method="post" action="/my-profile/edit">
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="name">Name</label>
+          <input class="govuk-input" id="name" name="name" type="text" value="{{ profile.name if profile else '' }}" required>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="projectTeam">Project team (optional)</label>
+          <input class="govuk-input" id="projectTeam" name="projectTeam" type="text" value="{{ profile.projectTeam if profile else '' }}">
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="deliveryGroup">Delivery group (optional)</label>
+          <input class="govuk-input" id="deliveryGroup" name="deliveryGroup" type="text" value="{{ profile.deliveryGroup if profile else '' }}">
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="role">Job title (GDaD)</label>
+          <select class="govuk-select" id="role" name="role" required>
+            <option value="">Select a job title</option>
+            {% for group in roleGroups %}
+              <optgroup label="{{ group.label }}">
+                {% for role in group.roles %}
+                  <option value="{{ role }}" {{ "selected" if profile and profile.role == role else "" }}>{{ role }}</option>
+                {% endfor %}
+              </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="location">Location (office)</label>
+          <input class="govuk-input" id="location" name="location" type="text" value="{{ profile.location if profile else '' }}" required>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="availabilityStatus">Availability</label>
+          <select class="govuk-select" id="availabilityStatus" name="availabilityStatus" required>
+            <option value="">Select availability</option>
+            {% for status in availabilityStatuses %}
+              <option value="{{ status }}" {{ "selected" if profile and profile.availabilityStatus == status else "" }}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="experience">Experience</label>
+          <div id="experience-hint" class="govuk-hint">Number of years working as a designer or within user centred design</div>
+          <input class="govuk-input govuk-input--width-10" id="experience" name="experience" type="text"
+            aria-describedby="experience-hint" value="{{ profile.experience if profile else '' }}" required>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="canHelpWithTags">Can help with tags</label>
+          <div id="canHelpWithTags-hint" class="govuk-hint">Select all that apply</div>
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes" aria-describedby="canHelpWithTags-hint">
+            {% for tag in availableTags %}
+              <div class="govuk-checkboxes__item">
+                <input class="govuk-checkboxes__input" id="canHelpWithTag-{{ loop.index }}" name="canHelpWithTags" type="checkbox" value="{{ tag }}"
+                  {{ "checked" if profile and profile.canHelpWith and (tag in profile.canHelpWith) else "" }}>
+                <label class="govuk-label govuk-checkboxes__label" for="canHelpWithTag-{{ loop.index }}">
+                  {{ tag }}
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="canHelpWithText">Can help with (free text)</label>
+          <div id="canHelpWithText-hint" class="govuk-hint">Optional additional detail, up to 150 words. You can use Markdown for links and bullet points.</div>
+          <textarea class="govuk-textarea" id="canHelpWithText" name="canHelpWithText" rows="4"
+            aria-describedby="canHelpWithText-hint">{{ profile.canHelpWithText if profile else '' }}</textarea>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="developmentGoalsText">What I would like help with (free text)</label>
+          <div id="developmentGoalsText-hint" class="govuk-hint">Describe longer-term development support you are looking for (up to 150 words). You can use Markdown for links and bullet points.</div>
+          <textarea class="govuk-textarea" id="developmentGoalsText" name="developmentGoalsText" rows="4"
+            aria-describedby="developmentGoalsText-hint">{{ profile.developmentGoalsText if profile else '' }}</textarea>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="about">About (optional)</label>
+          <div id="about-hint" class="govuk-hint">You can use Markdown for links and bullet points.</div>
+          <textarea class="govuk-textarea" id="about" name="about" rows="5" aria-describedby="about-hint">{{ profile.bio if profile else '' }}</textarea>
+        </div>
+
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="linkedinProfile">LinkedIn profile link (optional)</label>
+          <input class="govuk-input" id="linkedinProfile" name="linkedinProfile" type="url" value="{{ profile.linkedinProfile if profile else '' }}">
+        </div>
+
+        <div class="govuk-button-group">
+          <button class="govuk-button" data-module="govuk-button" type="submit">
+            Save profile
+          </button>
+          <a class="govuk-link" href="/browse">Cancel</a>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

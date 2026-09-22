@@ -1,0 +1,122 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row govuk-!-margin-bottom-7">
+    <div class="govuk-grid-column-full">
+      <p class="govuk-body govuk-!-margin-bottom-2">
+        <a href="/browse" class="govuk-link govuk-back-link">Back to team members</a>
+      </p>
+
+      <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">
+        {{ member.name }}
+      </h1>
+      {% if not isAdmin and isOwnProfile %}
+        <p class="govuk-body govuk-!-margin-bottom-0">
+          <a class="govuk-button" data-module="govuk-button" href="/my-profile/edit">Edit my profile</a>
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      {% if member.role %}
+        <p class="govuk-body-l profile-page__job-title">{{ member.role }}</p>
+      {% endif %}
+
+      <dl class="govuk-summary-list {% if member.role %}govuk-!-margin-top-6{% endif %}">
+        {% if member.displayEmail %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Email</dt>
+            <dd class="govuk-summary-list__value">
+              <a class="govuk-link" href="mailto:{{ member.displayEmail }}">{{ member.displayEmail }}</a>
+            </dd>
+          </div>
+        {% endif %}
+        {% if member.projectTeam %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Project team</dt>
+            <dd class="govuk-summary-list__value">{{ member.projectTeam }}</dd>
+          </div>
+        {% endif %}
+        {% if member.deliveryGroup %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Delivery group</dt>
+            <dd class="govuk-summary-list__value">{{ member.deliveryGroup }}</dd>
+          </div>
+        {% endif %}
+        {% if member.location %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Location</dt>
+            <dd class="govuk-summary-list__value">{{ member.location }}</dd>
+          </div>
+        {% endif %}
+        {% if member.availabilityStatus %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Availability</dt>
+            <dd class="govuk-summary-list__value">{{ member.availabilityStatus }}</dd>
+          </div>
+        {% endif %}
+        {% if member.experience %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">Experience</dt>
+            <dd class="govuk-summary-list__value">{{ member.experience }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+
+      {% if member.canHelpWith and member.canHelpWith.length %}
+        <h2 class="govuk-heading-m">Can help with</h2>
+        <ul class="govuk-list govuk-list--bullet">
+          {% for help in member.canHelpWith %}
+            <li>{{ help }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if member.canHelpWithText %}
+        {{ member.canHelpWithText | markdownToGovukHtml }}
+      {% endif %}
+
+      {% if member.developmentGoalsText %}
+        <h2 class="govuk-heading-m">What I would like help with</h2>
+        {{ member.developmentGoalsText | markdownToGovukHtml }}
+      {% endif %}
+
+      {% if member.bio %}
+        <h2 class="govuk-heading-m">About</h2>
+        {{ member.bio | markdownToGovukHtml }}
+      {% endif %}
+
+      {% if member.linkedinProfile %}
+        <h2 class="govuk-heading-m">LinkedIn</h2>
+        <p class="govuk-body">
+          <a class="govuk-link" href="{{ member.linkedinProfile }}" target="_blank" rel="noreferrer noopener">
+            {{ member.linkedinProfile }}
+          </a>
+        </p>
+      {% endif %}
+
+    </div>
+
+    <div class="govuk-grid-column-one-third profile-page__contact-sidebar">
+      <aside class="profile-page__contact-aside" aria-labelledby="profile-get-in-touch">
+        <h2 id="profile-get-in-touch" class="govuk-heading-m govuk-!-margin-top-0">Get in touch</h2>
+        <p class="govuk-body">
+          {% if member.displayEmail %}
+            Email <a class="govuk-link" href="mailto:{{ member.displayEmail }}">{{ member.displayEmail }}</a> or reach out to {{ member.firstName }} on Slack to arrange a time to chat.
+          {% else %}
+            Reach out to {{ member.firstName }} on Slack or by email to arrange a time to chat.
+          {% endif %}
+        </p>
+        {% if member.displayEmail %}
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            <a href="mailto:{{ member.displayEmail }}" class="govuk-button" data-module="govuk-button">
+              Send message
+            </a>
+          </p>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
+{% endblock %}

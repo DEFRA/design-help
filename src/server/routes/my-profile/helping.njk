@@ -1,0 +1,84 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <p class="govuk-body">
+        <a href="/my-profile" class="govuk-back-link">Back to my profile</a>
+      </p>
+
+      <h1 class="govuk-heading-xl">I&rsquo;m helping someone</h1>
+      <p class="govuk-body">Update who you&rsquo;re giving long-term support to and your availability, without editing your full profile.</p>
+
+      {% if currentPath == '/my-profile/helping' and saved %}
+        {% set savedHtml %}
+          <h3 class="govuk-notification-banner__heading">Your status has been saved</h3>
+          <p class="govuk-body">
+            <a class="govuk-notification-banner__link" href="/my-profile">View my profile</a> or
+            <a class="govuk-notification-banner__link" href="/browse">browse all team members</a>.
+          </p>
+        {% endset %}
+        {{ govukNotificationBanner({ type: "success", html: savedHtml }) }}
+      {% endif %}
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
+      <form method="post" action="/my-profile/helping">
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+
+        <h2 class="govuk-heading-m">Who I&rsquo;m helping (long-term)</h2>
+        <p class="govuk-body">
+          <strong>Free to help</strong> in the next section means you are not giving long-term help to anyone listed here. Short drop-ins are not listed — only support you are giving over a longer period. Only you and admins can see this.
+        </p>
+        <div id="helping-rows">
+          {% for row in helpingRows %}
+            <div class="govuk-form-group helping-row" data-helping-row>
+              <label class="govuk-label" for="helpee-helping-{{ row.index }}">Designer I&rsquo;m helping (long-term)</label>
+              <select class="govuk-select" name="helpeeProfileId" id="helpee-helping-{{ row.index }}">
+                <option value="">— None selected —</option>
+                {% for opt in designerOptions %}
+                  <option value="{{ opt.id }}" {% if row.selectedId == opt.id %}selected{% endif %}>{{ opt.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+        </div>
+        <p class="govuk-body">
+          <button type="button" class="govuk-button govuk-button--secondary" data-module="govuk-button" id="add-helping-row">Add another</button>
+        </p>
+        <template id="helping-row-template">
+          <div class="govuk-form-group helping-row" data-helping-row>
+            <label class="govuk-label">Designer I&rsquo;m helping (long-term)</label>
+            <select class="govuk-select" name="helpeeProfileId">
+              <option value="">— None selected —</option>
+              {% for opt in designerOptions %}
+                <option value="{{ opt.id }}">{{ opt.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </template>
+
+        <h2 class="govuk-heading-m">Your availability</h2>
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--m" for="availabilityStatusHelping">Availability</label>
+          <select class="govuk-select" id="availabilityStatusHelping" name="availabilityStatus" required>
+            <option value="">Select availability</option>
+            <option value="Busy" {{ "selected" if profile and profile.availabilityStatus == "Busy" else "" }}>Busy</option>
+            <option value="Some capacity" {{ "selected" if profile and profile.availabilityStatus == "Some capacity" else "" }}>Some capacity</option>
+            <option value="Free to help" {{ "selected" if profile and profile.availabilityStatus == "Free to help" else "" }}>Free to help</option>
+          </select>
+        </div>
+
+        <div class="govuk-button-group">
+          <button class="govuk-button" data-module="govuk-button" type="submit">Save</button>
+          <a class="govuk-link" href="/my-profile">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
