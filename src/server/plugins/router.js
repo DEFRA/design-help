@@ -9,6 +9,8 @@ import { profile } from '../routes/profile/index.js'
 import { myProfile } from '../routes/my-profile/index.js'
 import { requestsOffers } from '../routes/requests-offers/index.js'
 import { feedback } from '../routes/feedback/index.js'
+import { admin } from '../routes/admin/index.js'
+import { gdad } from '../routes/gdad/index.js'
 import { health } from '../routes/health/index.js'
 import { serveStaticFiles } from './serve-static-files.js'
 import { config } from '#/config/config.js'
@@ -32,7 +34,9 @@ export const router = {
         profile,
         myProfile,
         requestsOffers,
-        feedback
+        feedback,
+        admin,
+        gdad
       ])
 
       // Static assets
