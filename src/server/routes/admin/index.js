@@ -1,8 +1,12 @@
+import { usersRoutes } from './users-controller.js'
+import { profileRoutes } from './profile-controller.js'
+import { managersRoutes } from './managers-controller.js'
+
 export const admin = {
   plugin: {
     name: 'admin',
-    register() {
-      // Admin routes are added here as the port progresses
+    register(server) {
+      server.route([...usersRoutes, ...profileRoutes, ...managersRoutes])
     }
   }
 }

@@ -1,0 +1,100 @@
+{% extends 'layouts/page.njk' %}
+
+{% macro lineManagerCheckbox(row) %}
+  <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+    <div class="govuk-checkboxes__item">
+      <input class="govuk-checkboxes__input" id="lm_{{ row.id }}" name="line_manager" type="checkbox" value="{{ row.id }}"{% if row.isLineManager %} checked{% endif %}>
+      <label class="govuk-label govuk-checkboxes__label" for="lm_{{ row.id }}">
+        <span class="govuk-visually-hidden">Line manager: {{ row.name }}</span>
+      </label>
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro managerTable(rows) %}
+  <table class="govuk-table">
+    <thead class="govuk-table__head">
+      <tr class="govuk-table__row">
+        <th scope="col" class="govuk-table__header">Line manager</th>
+        <th scope="col" class="govuk-table__header">Name</th>
+        <th scope="col" class="govuk-table__header">Role</th>
+      </tr>
+    </thead>
+    <tbody class="govuk-table__body">
+      {% for row in rows %}
+        <tr class="govuk-table__row">
+          <td class="govuk-table__cell">
+            {{ lineManagerCheckbox(row) }}
+          </td>
+          <td class="govuk-table__cell">
+            <a class="govuk-link" href="{{ row.path }}">{{ row.name }}</a>
+          </td>
+          <td class="govuk-table__cell">
+            {{ row.role or "—" }}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      {% set adminToolsActiveTab = 'identifymanagers' %}
+      {% include "partials/admin-tools-nav.njk" %}
+
+      <h1 class="govuk-heading-xl">Identify managers</h1>
+
+      <p class="govuk-body">
+        Choose who has line management responsibility. Only people you select here appear in the responsible manager dropdown when you assign team members.
+      </p>
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="/admin/management-allocations">Assign responsible managers</a>
+      </p>
+
+      {% if saved %}
+        {{ govukNotificationBanner({
+          type: "success",
+          titleText: "Saved",
+          text: "Line managers were updated."
+        }) }}
+      {% endif %}
+
+      {% if lineManagerRows.length > 0 or addCandidateRows.length > 0 %}
+        <form method="post" action="/admin/identify-managers" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+
+          <h2 class="govuk-heading-m govuk-!-margin-top-6">Current line managers ({{ lineManagerCount }})</h2>
+          <p class="govuk-body">
+            These people can be chosen as responsible managers. Uncheck someone to remove them as a line manager. Anyone they were managing on the assign managers screen will become unassigned.
+          </p>
+
+          {% if lineManagerRows and lineManagerRows.length > 0 %}
+            {{ managerTable(lineManagerRows) }}
+          {% else %}
+            <p class="govuk-body">No line managers identified yet. Add people using the list below.</p>
+          {% endif %}
+
+          <h2 class="govuk-heading-m govuk-!-margin-top-8">Add line managers</h2>
+          <p class="govuk-body">
+            Check people to give them line management responsibility.
+          </p>
+
+          {% if addCandidateRows and addCandidateRows.length > 0 %}
+            {{ managerTable(addCandidateRows) }}
+          {% else %}
+            <p class="govuk-body">Everyone registered is already a line manager.</p>
+          {% endif %}
+
+          <button type="submit" class="govuk-button govuk-!-margin-top-6" data-module="govuk-button">
+            Save line managers
+          </button>
+        </form>
+      {% else %}
+        <p class="govuk-body">No registered profiles found yet.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

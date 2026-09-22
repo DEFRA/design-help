@@ -1,0 +1,116 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      {% set adminToolsActiveTab = 'people' %}
+      {% include "partials/admin-tools-nav.njk" %}
+
+      <h1 class="govuk-heading-xl">Admin</h1>
+
+      {% if adminMsg %}
+        {% if adminMsg.isSuccess %}
+          {{ govukNotificationBanner({ type: "success", text: adminMsg.text }) }}
+        {% else %}
+          {{ govukErrorSummary({
+            titleText: "There is a problem",
+            errorList: [{ text: adminMsg.text }]
+          }) }}
+        {% endif %}
+      {% endif %}
+
+      {% if user.isHeadOfDesignSuperUser %}
+        <p class="govuk-body">
+          As Head of Design you can grant or remove admin access for people on this list. Admins set in service configuration cannot be removed here. Use the GDaD evidence admin tool to review capability evidence.
+        </p>
+      {% endif %}
+
+      <p class="govuk-body govuk-!-margin-bottom-6">
+        <a class="govuk-button" data-module="govuk-button" href="/admin/add-profile?new=1">Add team member</a>
+      </p>
+
+      <h2 class="govuk-heading-m">People access and profiles</h2>
+      <form method="post" action="/admin/approved-emails" class="govuk-!-margin-bottom-4">
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <div class="govuk-form-group">
+          <label class="govuk-label" for="approved-email">Add person (email address)</label>
+          <input class="govuk-input govuk-!-width-two-thirds" id="approved-email" name="email" type="email" placeholder="name@defra.gov.uk">
+        </div>
+        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Add person</button>
+      </form>
+
+      {% if rows and rows.length > 0 %}
+        <table class="govuk-table govuk-!-margin-bottom-8">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Name</th>
+              <th scope="col" class="govuk-table__header">Job title</th>
+              <th scope="col" class="govuk-table__header">Email</th>
+              <th scope="col" class="govuk-table__header">Account</th>
+              <th scope="col" class="govuk-table__header">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for row in rows %}
+              <tr class="govuk-table__row{% if row.pendingActivation %} app-admin-row--pending{% endif %}">
+                <td class="govuk-table__cell">
+                  {% if row.name %}
+                    {{ row.name }}
+                  {% else %}
+                    <span class="govuk-body app-admin-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">{{ row.role if row.role else "—" }}</td>
+                <td class="govuk-table__cell">
+                  <strong class="govuk-!-font-weight-bold">{{ row.email if row.email else "—" }}</strong>
+                </td>
+                <td class="govuk-table__cell">
+                  {% if row.pendingActivation %}
+                    <strong class="govuk-tag govuk-tag--yellow">Pending</strong>
+                  {% elif row.isBootstrapAdmin %}
+                    <strong class="govuk-tag govuk-tag--grey">Service admin</strong>
+                  {% elif row.isAdmin %}
+                    <strong class="govuk-tag govuk-tag--blue">Admin</strong>
+                  {% elif row.hasProfile %}
+                    <strong class="govuk-tag govuk-tag--green">Active</strong>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="govuk-table__cell">
+                  <div class="design-help-admin-users-actions">
+                    {% if user.isHeadOfDesignSuperUser and row.email and row.canManageAdminAccess %}
+                      {% if row.isAdmin %}
+                        <form method="post" action="/admin/users/revoke-admin">
+                          <input type="hidden" name="crumb" value="{{ crumb }}">
+                          <input type="hidden" name="email" value="{{ row.email }}">
+                          <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Remove admin</button>
+                        </form>
+                      {% else %}
+                        <form method="post" action="/admin/users/grant-admin">
+                          <input type="hidden" name="crumb" value="{{ crumb }}">
+                          <input type="hidden" name="email" value="{{ row.email }}">
+                          <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Make admin</button>
+                        </form>
+                      {% endif %}
+                    {% elif user.isHeadOfDesignSuperUser and row.email and row.isBootstrapAdmin %}
+                      <span class="govuk-hint govuk-!-margin-bottom-0">Protected admin</span>
+                    {% endif %}
+                    {% if row.hasProfile %}
+                      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/admin/users/{{ row.id }}/edit">Edit</a>
+                      <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/admin/profile/{{ row.id }}/confirm-delete">Delete</a>
+                    {% else %}
+                      <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/admin/approved-emails/{{ row.id }}/confirm-delete">Remove from list</a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="govuk-body">No approved people configured yet.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

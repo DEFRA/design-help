@@ -1,1 +1,13 @@
 // Admin module styles (see routes/admin)
+// The prototype used inline style attributes for these; CDP's CSP strips
+// those, so they live here as classes instead.
+
+// People and access table: rows awaiting first sign-in
+.app-admin-row--pending {
+  background: #f0f4f5;
+}
+
+// Muted em-dash placeholder for empty cells
+.app-admin-muted {
+  color: #505a5f;
+}

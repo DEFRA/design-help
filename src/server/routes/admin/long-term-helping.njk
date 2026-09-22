@@ -1,0 +1,44 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      {% set adminToolsActiveTab = 'longterm' %}
+      {% include "partials/admin-tools-nav.njk" %}
+
+      <h1 class="govuk-heading-xl">Long-term help relationships</h1>
+      <p class="govuk-body">
+        Designers record ongoing help they are giving (not short drop-ins). This list is only visible to admins and to each person on their own profile.
+      </p>
+
+      {% if relationships and relationships.length > 0 %}
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">
+              <th scope="col" class="govuk-table__header">Helper</th>
+              <th scope="col" class="govuk-table__header">Helping</th>
+              <th scope="col" class="govuk-table__header">Since</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body">
+            {% for row in relationships %}
+              <tr class="govuk-table__row">
+                <td class="govuk-table__cell">
+                  <a class="govuk-link" href="{{ row.helperPath }}">{{ row.helperName }}</a>
+                </td>
+                <td class="govuk-table__cell">
+                  <a class="govuk-link" href="{{ row.helpeePath }}">{{ row.helpeeName }}</a>
+                </td>
+                <td class="govuk-table__cell">
+                  {{ row.since | formatDate('d MMM yyyy') if row.since else "—" }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="govuk-body">No long-term help relationships recorded yet.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

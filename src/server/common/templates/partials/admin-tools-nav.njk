@@ -1,0 +1,26 @@
+{# Horizontal admin shortcuts. Set adminToolsActiveTab: 'people' | 'identifymanagers' | 'managers' | 'longterm' | 'gdad' before including. #}
+<div class="design-help-admin-tools govuk-!-margin-bottom-6">
+  <nav class="design-help-admin-tools__nav" aria-label="Admin tools">
+    <ul class="design-help-admin-tools__list">
+      {% if isAdmin %}
+        <li class="design-help-admin-tools__item">
+          <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'people' %} govuk-!-font-weight-bold{% endif %}" href="/admin/users"{% if adminToolsActiveTab == 'people' %} aria-current="page"{% endif %}>People and access</a>
+        </li>
+        {% if user.isHeadOfDesignSuperUser %}
+          <li class="design-help-admin-tools__item">
+            <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'identifymanagers' %} govuk-!-font-weight-bold{% endif %}" href="/admin/identify-managers"{% if adminToolsActiveTab == 'identifymanagers' %} aria-current="page"{% endif %}>Identify managers</a>
+          </li>
+          <li class="design-help-admin-tools__item">
+            <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'managers' %} govuk-!-font-weight-bold{% endif %}" href="/admin/management-allocations"{% if adminToolsActiveTab == 'managers' %} aria-current="page"{% endif %}>Responsible managers</a>
+          </li>
+        {% endif %}
+        <li class="design-help-admin-tools__item">
+          <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'longterm' %} govuk-!-font-weight-bold{% endif %}" href="/admin/long-term-helping"{% if adminToolsActiveTab == 'longterm' %} aria-current="page"{% endif %}>Long-term help</a>
+        </li>
+        <li class="design-help-admin-tools__item">
+          <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'gdad' %} govuk-!-font-weight-bold{% endif %}" href="/review/gdad-evidence"{% if adminToolsActiveTab == 'gdad' %} aria-current="page"{% endif %}>GDaD evidence</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
