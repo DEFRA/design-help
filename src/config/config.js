@@ -195,6 +195,65 @@ export const config = convict({
       env: 'REDIS_TLS'
     }
   },
+  backendApiUrl: {
+    doc: 'Base URL of the design-help-backend API',
+    format: String,
+    default: 'http://localhost:3198',
+    env: 'BACKEND_API_URL'
+  },
+  appBaseUrl: {
+    doc: 'Public base URL of this service, used to build sign-in links',
+    format: String,
+    default: 'http://localhost:3199',
+    env: 'APP_BASE_URL'
+  },
+  auth: {
+    adminEmails: {
+      doc: 'Comma-separated bootstrap admin emails (cannot be revoked in-app)',
+      format: String,
+      default: '',
+      env: 'ADMIN_EMAILS'
+    },
+    headOfDesignEmails: {
+      doc: 'Comma-separated emails allowed the Head of Design super user role and job title',
+      format: String,
+      default: '',
+      env: 'GDAD_HEAD_OF_DESIGN_EMAILS'
+    },
+    magicLinkTtl: {
+      doc: 'Sign-in link time to live in milliseconds',
+      format: Number,
+      default: 900000,
+      env: 'MAGIC_LINK_TTL'
+    }
+  },
+  notify: {
+    apiKey: {
+      doc: 'GOV.UK Notify API key',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'NOTIFY_API_KEY'
+    },
+    magicLinkTemplateId: {
+      doc: 'Notify template for sign-in link emails',
+      format: String,
+      default: '',
+      env: 'NOTIFY_MAGIC_LINK_TEMPLATE_ID'
+    },
+    feedbackTemplateId: {
+      doc: 'Notify template for service feedback emails',
+      format: String,
+      default: '',
+      env: 'NOTIFY_FEEDBACK_TEMPLATE_ID'
+    },
+    feedbackInboxEmail: {
+      doc: 'Inbox that receives service feedback',
+      format: String,
+      default: '',
+      env: 'FEEDBACK_INBOX_EMAIL'
+    }
+  },
   nunjucks: {
     watch: {
       doc: 'Reload templates when they are changed.',
