@@ -75,15 +75,17 @@
       </div>
     </section>
   {% else %}
-    <section class="govuk-service-navigation" aria-label="Sign in menu">
-      <div class="govuk-width-container">
-        <nav class="govuk-!-padding-top-2 govuk-!-padding-bottom-2" aria-label="Account shortcuts">
-          <ul class="govuk-list govuk-!-margin-bottom-0 design-help-signin-list">
-            <li><a class="govuk-link govuk-link--no-visited-state" href="/sign-in">Sign in</a></li>
-          </ul>
-        </nav>
-      </div>
-    </section>
+    {% if signInAvailable %}
+      <section class="govuk-service-navigation" aria-label="Sign in menu">
+        <div class="govuk-width-container">
+          <nav class="govuk-!-padding-top-2 govuk-!-padding-bottom-2" aria-label="Account shortcuts">
+            <ul class="govuk-list govuk-!-margin-bottom-0 design-help-signin-list">
+              <li><a class="govuk-link govuk-link--no-visited-state" href="/sign-in">Sign in</a></li>
+            </ul>
+          </nav>
+        </div>
+      </section>
+    {% endif %}
   {% endif %}
 {% endblock %}
 

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { config } from '#/config/config.js'
 import { buildNavigation } from './build-navigation.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
+import { isSignInAvailable } from '#/server/common/helpers/auth/sign-in-availability.js'
 
 const logger = createLogger()
 const assetPath = config.get('assetPath')
@@ -49,6 +50,7 @@ export function context(request) {
     isAdmin: Boolean(user?.isAdmin),
     currentPath: request?.path ?? '/',
     appVersion: config.get('serviceVersion') ?? 'dev',
+    signInAvailable: isSignInAvailable(),
     feedbackLinkHref,
     showFeedbackFooter: request?.path !== '/feedback',
     getAssetPath(asset) {

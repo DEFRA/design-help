@@ -1,11 +1,9 @@
 import { config } from '#/config/config.js'
 import { backendApi } from '#/server/common/helpers/backend-api.js'
 import { buildSessionUser } from '#/server/common/helpers/auth/user-session.js'
-import {
-  isMagicLinkNotifyConfigured,
-  sendMagicLinkEmail
-} from '#/server/common/helpers/notify.js'
+import { sendMagicLinkEmail } from '#/server/common/helpers/notify.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
+import { isSignInAvailable } from '#/server/common/helpers/auth/sign-in-availability.js'
 
 const logger = createLogger()
 
@@ -28,6 +26,11 @@ export const signInRoutes = [
       if (request.app.user) {
         return h.redirect('/browse')
       }
+      if (!isSignInAvailable()) {
+        return h.view('sign-in/unavailable', {
+          pageTitle: 'Sign in is not available yet'
+        })
+      }
       return h.view('sign-in/index', { pageTitle: 'Sign in' })
     }
   },
@@ -47,12 +50,9 @@ export const signInRoutes = [
         })
       }
 
-      if (config.get('isProduction') && !isMagicLinkNotifyConfigured()) {
-        return h.view('sign-in/index', {
-          pageTitle: 'Sign in',
-          email,
-          errorMessage:
-            'Sign in is not available because email sending is not configured on this service. Contact an administrator.'
+      if (!isSignInAvailable()) {
+        return h.view('sign-in/unavailable', {
+          pageTitle: 'Sign in is not available yet'
         })
       }
 
