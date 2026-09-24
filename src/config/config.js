@@ -225,6 +225,13 @@ export const config = convict({
       format: Number,
       default: 900000,
       env: 'MAGIC_LINK_TTL'
+    },
+    devSignInCode: {
+      doc: 'Temporary access code enabling code-based sign-in while Notify is not set up; unset disables the route',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'DEV_SIGN_IN_CODE'
     }
   },
   notify: {

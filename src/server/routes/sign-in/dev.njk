@@ -1,0 +1,53 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">Sign in with access code</h1>
+
+      <p class="govuk-body">
+        Temporary sign-in while email delivery is being set up. Enter your Defra email address and the access code you were given.
+      </p>
+
+      {% if errorMessage %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [
+            {
+              text: errorMessage,
+              href: "#email"
+            }
+          ]
+        }) }}
+      {% endif %}
+
+      <form method="post" action="/sign-in/dev" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+
+        {{ govukInput({
+          label: { text: "Email address" },
+          id: "email",
+          name: "email",
+          type: "email",
+          value: email,
+          autocomplete: "email",
+          spellcheck: false
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Access code" },
+          id: "code",
+          name: "code",
+          type: "password",
+          autocomplete: "off",
+          spellcheck: false,
+          classes: "govuk-input--width-20"
+        }) }}
+
+        {{ govukButton({
+          text: "Sign in"
+        }) }}
+      </form>
+    </div>
+  </div>
+{% endblock %}
