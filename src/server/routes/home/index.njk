@@ -12,10 +12,16 @@
       </p>
 
       {% if not user %}
-        <p class="govuk-body">
-          <a class="govuk-link govuk-link--no-visited-state" href="/sign-in">Sign in</a>
-          to use the directory and your profile.
-        </p>
+        {% if signInAvailable %}
+          <p class="govuk-body">
+            <a class="govuk-link govuk-link--no-visited-state" href="/sign-in">Sign in</a>
+            to use the directory and your profile.
+          </p>
+        {% else %}
+          <p class="govuk-body">
+            Design help is being set up — signing in will be available soon.
+          </p>
+        {% endif %}
       {% endif %}
 
       <h2 class="govuk-heading-m">What do you need help with?</h2>

@@ -87,6 +87,7 @@ describe('context and cache', () => {
           isAdmin: false,
           currentPath: '/',
           appVersion: 'dev',
+          signInAvailable: false,
           feedbackLinkHref: '/feedback?return=%2F',
           showFeedbackFooter: true
         })
@@ -192,6 +193,7 @@ describe('context and cache', () => {
           isAdmin: false,
           currentPath: '/',
           appVersion: 'dev',
+          signInAvailable: false,
           feedbackLinkHref: '/feedback?return=%2F',
           showFeedbackFooter: true
         })
