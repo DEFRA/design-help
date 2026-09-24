@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto'
+
 import { config } from '#/config/config.js'
 import { backendApi } from '#/server/common/helpers/backend-api.js'
 import { buildSessionUser } from '#/server/common/helpers/auth/user-session.js'
@@ -118,6 +120,65 @@ export const signInRoutes = [
     handler(request, h) {
       request.yar.reset()
       return h.redirect('/')
+    }
+  },
+  /**
+   * Temporary side door while GOV.UK Notify is not yet configured:
+   * sign in with your email plus a shared access code held in the
+   * DEV_SIGN_IN_CODE secret. The route 404s whenever that secret is
+   * unset, so removing the secret removes the door. The allow-list
+   * still applies — the code only replaces the emailed link.
+   */
+  {
+    method: 'GET',
+    path: '/sign-in/dev',
+    handler(request, h) {
+      if (!config.get('auth.devSignInCode')) {
+        return h.response().code(404)
+      }
+      if (request.app.user) {
+        return h.redirect('/browse')
+      }
+      return h.view('sign-in/dev', { pageTitle: 'Sign in with access code' })
+    }
+  },
+  {
+    method: 'POST',
+    path: '/sign-in/dev',
+    async handler(request, h) {
+      const expectedCode = config.get('auth.devSignInCode')
+      if (!expectedCode) {
+        return h.response().code(404)
+      }
+
+      const email = String(request.payload?.email ?? '')
+        .trim()
+        .toLowerCase()
+      const code = String(request.payload?.code ?? '').trim()
+      const codeMatches =
+        code.length === expectedCode.length &&
+        timingSafeEqual(Buffer.from(code), Buffer.from(expectedCode))
+
+      const person = codeMatches
+        ? await backendApi.getPersonByEmail(email)
+        : null
+      if (!person || !person.approved) {
+        logger.info('Access-code sign-in rejected')
+        return h
+          .view('sign-in/dev', {
+            pageTitle: 'Sign in with access code',
+            email,
+            errorMessage:
+              'The access code and email did not match. Check both and try again.'
+          })
+          .code(400)
+      }
+
+      if (!person.activatedAt) {
+        await backendApi.activatePerson(person.id)
+      }
+      request.yar.set('user', buildSessionUser(person))
+      return h.redirect('/browse')
     }
   }
 ]
