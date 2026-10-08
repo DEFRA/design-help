@@ -201,6 +201,27 @@ export const config = convict({
     default: 'http://localhost:3198',
     env: 'BACKEND_API_URL'
   },
+  backendApiAuth: {
+    tokenUrl: {
+      doc: 'Cognito token URL when calling the backend through a CDP API gateway (unset = no auth, for on-platform and local backends)',
+      format: String,
+      default: '',
+      env: 'BACKEND_API_TOKEN_URL'
+    },
+    clientId: {
+      doc: 'Cognito app client id for the backend API gateway',
+      format: String,
+      default: '',
+      env: 'BACKEND_API_CLIENT_ID'
+    },
+    clientSecret: {
+      doc: 'Cognito app client secret for the backend API gateway',
+      format: String,
+      default: '',
+      sensitive: true,
+      env: 'BACKEND_API_CLIENT_SECRET'
+    }
+  },
   appBaseUrl: {
     doc: 'Public base URL of this service, used to build sign-in links',
     format: String,

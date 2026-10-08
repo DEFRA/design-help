@@ -38,11 +38,38 @@ This is the frontend service (Hapi + Nunjucks + GOV.UK Frontend, sessions in Red
 - **Admin**: people and access management, add-profile wizard, line-manager identification and allocations (Head of Design only), admin grant/revoke (Head of Design only; bootstrap admins from `ADMIN_EMAILS` cannot be revoked).
 - **GDaD**: designers keep STAR evidence for the seven DDaT design skills (typed or CSV import); line managers and admins review and score; capability banding from the best six scores.
 
-Local development needs the backend running (see its README) and a `.env` such as:
+## Frontend-only local development (live dev data)
+
+The quickest way to work on the frontend: run only this service locally and point it at the **deployed dev backend** through its API gateway. No Docker, no local database.
+
+One-time prerequisites:
+
+- Being on the Defra network — office network or VPN (the gateway resolves only there)
+- The `design-help-backend` PRIVATE API gateway must exist in dev (a one-time request to [#cdp-support](https://defra-digital-team.slack.com/archives/C05UJ3SE5C6/); CDP creates it with Cognito auth)
+- The gateway's Cognito **client id and secret**, and the token URL suffix — from the Portal (design-help-backend → Resources → Debug view gives the user-pool id; `aws cognito-idp list-user-pool-clients` / `describe-user-pool-client` in the CDP Terminal shows the client), or from a teammate who has them already
+
+Then:
+
+```bash
+git clone https://github.com/DEFRA/design-help.git
+cd design-help
+nvm install
+npm install
+cp .env.example .env    # fill in the client id/secret and token URL
+npm run dev
+```
+
+Open <http://localhost:3000>, enter your Defra email on the sign-in page, and click the sign-in link that is **printed in your terminal** (locally nothing is emailed). Your email must be on the service's allow-list.
+
+> **This is live dev data.** Profile edits, scores and admin actions you make locally are real changes everyone sees on dev.
+
+### Fully local stack instead
+
+To run against your own backend (e.g. offline, or to test backend changes together), clone [design-help-backend](https://github.com/DEFRA/design-help-backend) as a sibling, start MongoDB and the backend per its README, and use a `.env` like:
 
 ```
-PORT=3199
-BACKEND_API_URL=http://localhost:3198
+PORT=3000
+BACKEND_API_URL=http://localhost:3001
 ADMIN_EMAILS=you@defra.gov.uk
 GDAD_HEAD_OF_DESIGN_EMAILS=you@defra.gov.uk
 ```

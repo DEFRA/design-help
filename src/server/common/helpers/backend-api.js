@@ -1,5 +1,10 @@
 import { config } from '#/config/config.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
+import {
+  clearTokenCache,
+  getAuthHeaders,
+  isGatewayAuthConfigured
+} from '#/server/common/helpers/backend-api-auth.js'
 
 const logger = createLogger()
 
@@ -17,11 +22,26 @@ export class BackendApiError extends Error {
  */
 async function call(method, path, payload) {
   const url = `${config.get('backendApiUrl')}${path}`
-  const response = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    ...(payload !== undefined ? { body: JSON.stringify(payload) } : {})
-  })
+  const doFetch = async () =>
+    fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(await getAuthHeaders())
+      },
+      ...(payload !== undefined ? { body: JSON.stringify(payload) } : {})
+    })
+
+  let response = await doFetch()
+  // An expired or revoked gateway token comes back as 401/403; refresh
+  // once and retry before giving up
+  if (
+    isGatewayAuthConfigured() &&
+    (response.status === 401 || response.status === 403)
+  ) {
+    clearTokenCache()
+    response = await doFetch()
+  }
 
   if (response.status === 404) {
     return null
