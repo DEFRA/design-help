@@ -22,9 +22,11 @@ export function clearTokenCache() {
 }
 
 async function fetchToken() {
-  const tokenUrl = config.get('backendApiAuth.tokenUrl')
-  const clientId = config.get('backendApiAuth.clientId')
-  const clientSecret = config.get('backendApiAuth.clientSecret')
+  // Credentials usually arrive by copy-paste from a CSV with Windows line
+  // endings; a stray \r makes Cognito return invalid_client, so trim.
+  const tokenUrl = config.get('backendApiAuth.tokenUrl').trim()
+  const clientId = config.get('backendApiAuth.clientId').trim()
+  const clientSecret = config.get('backendApiAuth.clientSecret').trim()
 
   const response = await fetch(tokenUrl, {
     method: 'POST',
