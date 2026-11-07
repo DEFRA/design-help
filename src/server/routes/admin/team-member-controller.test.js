@@ -888,6 +888,21 @@ describe('#teamMemberRoutes', () => {
       )
     })
 
+    test('Other admins get Edit profile on rows with a profile only', async () => {
+      const { result } = await get(users.admin, '/admin/users')
+      expect(result).toContain(`href="/admin/users/${ids.report}/edit"`)
+      expect(result).toContain(
+        'Edit profile<span class="govuk-visually-hidden"> for Rae Report</span>'
+      )
+      expect(result).not.toContain(`href="/admin/users/${ids.pending}/edit"`)
+    })
+
+    test('Head of Design gets no Edit profile buttons on rows', async () => {
+      const { result } = await get(users.hod, '/admin/users')
+      expect(result).not.toContain('Edit profile')
+      expect(result).not.toContain(`href="/admin/users/${ids.report}/edit"`)
+    })
+
     test('Other admins keep the old wizard and get no Change links', async () => {
       const { statusCode, result } = await get(
         users.admin,

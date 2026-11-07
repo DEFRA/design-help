@@ -92,8 +92,7 @@ export function buildAdminUserRows(people) {
       hasProfile: Boolean(person.name),
       pendingActivation: Boolean(email && !person.activatedAt),
       isAdmin: Boolean(person.isAdmin) || isBootstrapAdmin,
-      isBootstrapAdmin,
-      canManageAdminAccess: Boolean(email && !isBootstrapAdmin)
+      isBootstrapAdmin
     }
   })
 

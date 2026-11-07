@@ -119,6 +119,9 @@
                     {% if user.isHeadOfDesignSuperUser %}
                       <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/admin/team-member/{{ row.id }}">Change<span class="govuk-visually-hidden"> team set-up for {{ row.name or row.email }}</span></a>
                     {% endif %}
+                    {% if row.hasProfile and not user.isHeadOfDesignSuperUser %}
+                      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/admin/users/{{ row.id }}/edit">Edit profile<span class="govuk-visually-hidden"> for {{ row.name or row.email }}</span></a>
+                    {% endif %}
                     {% if row.hasProfile %}
                       <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/admin/profile/{{ row.id }}/confirm-delete">Delete<span class="govuk-visually-hidden"> for {{ row.name or row.email }}</span></a>
                     {% else %}
