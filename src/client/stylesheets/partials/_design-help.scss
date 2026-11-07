@@ -268,19 +268,54 @@ $design-help-border: #b1b4b6;
   margin: 0;
 }
 
-// People and access table: stack row actions with consistent spacing
+// People and access table: email sits under the name in smaller grey text
+.design-help-admin-users__person {
+  overflow-wrap: anywhere;
+}
+
+.design-help-admin-users__name {
+  display: block;
+}
+
+.design-help-admin-users__email {
+  display: block;
+  margin: 0;
+  color: #505a5f; // GOV.UK secondary text colour
+}
+
+// People and access table: row actions sit side by side as small buttons
 .design-help-admin-users-actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 
   form {
+    display: inline-flex;
     margin: 0;
   }
 
   .govuk-button {
     margin-bottom: 0;
+    padding: 5px 8px 4px;
+    font-size: 1rem;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .govuk-hint {
+    font-size: 1rem;
+  }
+}
+
+// On wide screens keep the action buttons on one line
+@media (min-width: 64em) {
+  .design-help-admin-users__actions-header {
+    width: 1%;
+  }
+
+  .design-help-admin-users-actions {
+    flex-wrap: nowrap;
   }
 }
 

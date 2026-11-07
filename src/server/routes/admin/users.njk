@@ -73,25 +73,26 @@
             <tr class="govuk-table__row">
               <th scope="col" class="govuk-table__header">Name</th>
               <th scope="col" class="govuk-table__header">Job title</th>
-              <th scope="col" class="govuk-table__header">Email</th>
               <th scope="col" class="govuk-table__header">Account</th>
-              <th scope="col" class="govuk-table__header">Actions</th>
+              <th scope="col" class="govuk-table__header design-help-admin-users__actions-header">Actions</th>
             </tr>
           </thead>
           <tbody class="govuk-table__body">
             {% for row in rows %}
               <tr class="govuk-table__row{% if row.pendingActivation %} app-admin-row--pending{% endif %}">
-                <td class="govuk-table__cell">
+                <td class="govuk-table__cell design-help-admin-users__person">
                   {% if row.name %}
-                    {{ row.name }}
+                    <span class="design-help-admin-users__name">{{ row.name }}</span>
+                    {% if row.email %}
+                      <span class="govuk-body-s design-help-admin-users__email">{{ row.email }}</span>
+                    {% endif %}
+                  {% elif row.email %}
+                    <span class="design-help-admin-users__name">{{ row.email }}</span>
                   {% else %}
                     <span class="govuk-body app-admin-muted">—</span>
                   {% endif %}
                 </td>
                 <td class="govuk-table__cell">{{ row.role if row.role else "—" }}</td>
-                <td class="govuk-table__cell">
-                  <strong class="govuk-!-font-weight-bold">{{ row.email if row.email else "—" }}</strong>
-                </td>
                 <td class="govuk-table__cell">
                   {% if row.pendingActivation %}
                     <strong class="govuk-tag govuk-tag--yellow">Pending</strong>

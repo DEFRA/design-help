@@ -224,6 +224,25 @@ describe('#invitesRoutes', () => {
       expect(result).toContain('Invite everyone who’s pending (2)')
     })
 
+    test('Shows the email under the name instead of in its own column', async () => {
+      const { result } = await get(users.admin, '/admin/users')
+
+      expect(result).not.toMatch(/<th[^>]*>Email<\/th>/)
+      expect(result).toMatch(
+        /<th[^>]*>Name<\/th>\s*<th[^>]*>Job title<\/th>\s*<th[^>]*>Account<\/th>\s*<th[^>]*>Actions<\/th>/
+      )
+      expect(result).toMatch(
+        /design-help-admin-users__name">Pat Pending<\/span>\s*<span class="govuk-body-s design-help-admin-users__email">pat\.pending@defra\.gov\.uk<\/span>/
+      )
+      // No name: the email is the main text, shown once
+      expect(result).toContain(
+        'design-help-admin-users__name">emailonly@defra.gov.uk</span>'
+      )
+      expect(result).not.toContain(
+        'design-help-admin-users__email">emailonly@defra.gov.uk'
+      )
+    })
+
     test('Send invite buttons guard against double clicks', async () => {
       const { result } = await get(users.admin, '/admin/users')
       const buttons = result.match(/<button[^>]*>Send invite</g)
