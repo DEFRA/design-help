@@ -30,6 +30,58 @@ function byName(a, b) {
   )
 }
 
+/** "Name (email)" when they have a name, otherwise just the email. */
+export function managerLabel(person) {
+  return person.name ? `${person.name} (${person.email})` : person.email
+}
+
+const MIN_MATCH_LENGTH = 2
+
+function surnameOf(name) {
+  const words = String(name ?? '')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+  const last = words.at(-1) ?? ''
+  return last.length >= MIN_MATCH_LENGTH ? last : ''
+}
+
+/** The parts of an email before the @, e.g. "christopher.hawker2" -> christopher, hawker. */
+function emailWords(email) {
+  const local = String(email ?? '')
+    .toLowerCase()
+    .split('@')[0]
+  return local
+    .split(/[^a-z]+/)
+    .filter((word) => word.length >= MIN_MATCH_LENGTH)
+}
+
+/**
+ * People already on the list who might be the same person as the one being
+ * added: same surname, or one's surname appears as a word in the other's
+ * email (so "Chris Hawker" matches a nameless christopher.hawker@ entry).
+ * Exact email clashes are left to the backend's duplicate check.
+ */
+export function findPossibleDuplicates(form, people) {
+  const newSurname = surnameOf(form.name)
+  const newEmailWords = emailWords(form.email)
+  const newEmail = normaliseEmailInput(form.email)
+
+  return people.filter((person) => {
+    if (normaliseEmailInput(person.email) === newEmail) {
+      return false
+    }
+    const theirSurname = surnameOf(person.name)
+    if (newSurname && theirSurname === newSurname) {
+      return true
+    }
+    if (newSurname && emailWords(person.email).includes(newSurname)) {
+      return true
+    }
+    return Boolean(theirSurname) && newEmailWords.includes(theirSurname)
+  })
+}
+
 /** Read the posted form into the shape the template repaints from. */
 function readForm(payload = {}) {
   const raw = payload.isLineManager
@@ -38,7 +90,8 @@ function readForm(payload = {}) {
     email: normaliseEmailInput(payload.email),
     role: String(payload.role ?? '').trim(),
     managerId: String(payload.managerId ?? '').trim(),
-    isLineManager: raw === 'yes' || raw === 'on' || raw === true
+    isLineManager: raw === 'yes' || raw === 'on' || raw === true,
+    confirmedNotDuplicate: payload.confirmNotDuplicate === 'yes'
   }
 }
 
@@ -126,14 +179,15 @@ function viewContext({
   form,
   people,
   errors = {},
-  duplicateChangeHref = null
+  duplicateChangeHref = null,
+  possibleDuplicates = []
 }) {
   const managerOptions = people
     .filter((person) => person.isLineManager && person.id !== existing?.id)
     .sort(byName)
     .map((person) => ({
       value: person.id,
-      text: person.name || person.email,
+      text: managerLabel(person),
       selected: form.managerId === person.id
     }))
 
@@ -171,7 +225,12 @@ function viewContext({
     wasLineManager: Boolean(existing?.isLineManager),
     errors,
     errorList: errorList(errors),
-    duplicateChangeHref
+    duplicateChangeHref,
+    possibleDuplicates: possibleDuplicates.sort(byName).map((person) => ({
+      name: person.name || null,
+      email: person.email,
+      href: `/admin/team-member/${person.id}`
+    }))
   }
 }
 
@@ -263,6 +322,17 @@ export const teamMemberRoutes = [
 
       if (Object.keys(errors).length) {
         return repaint(errors)
+      }
+
+      // Ask before adding someone who might already be on the list.
+      if (!form.confirmedNotDuplicate) {
+        const possibleDuplicates = findPossibleDuplicates(form, people)
+        if (possibleDuplicates.length) {
+          return h.view(
+            'admin/team-member',
+            viewContext({ existing: null, form, people, possibleDuplicates })
+          )
+        }
       }
 
       let created

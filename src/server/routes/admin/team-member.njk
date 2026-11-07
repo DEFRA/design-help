@@ -28,6 +28,28 @@
         </p>
       {% endif %}
 
+      {% if possibleDuplicates.length %}
+        <div class="govuk-inset-text" id="possible-duplicates">
+          <h2 class="govuk-heading-m">Check they are not already on the list</h2>
+          {{ govukWarningText({
+            text: "We found " + ("someone" if possibleDuplicates.length == 1 else "people") + " with a similar name or email address. Adding the same person twice means they appear twice, for example in the line manager list.",
+            iconFallbackText: "Warning"
+          }) }}
+          <ul class="govuk-list govuk-list--bullet">
+            {% for match in possibleDuplicates %}
+              <li>
+                {% if match.name %}
+                  <a class="govuk-link" href="{{ match.href }}">{{ match.name }}</a> ({{ match.email }})
+                {% else %}
+                  <a class="govuk-link" href="{{ match.href }}">{{ match.email }}</a> (no name yet)
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+          <p class="govuk-body">If this is the same person, select them above to change their details instead. If not, check the details below and add them.</p>
+        </div>
+      {% endif %}
+
       <form method="post" action="{{ formAction }}" novalidate>
         <input type="hidden" name="crumb" value="{{ crumb }}">
 
@@ -95,7 +117,15 @@
         }) }}
 
         <div class="govuk-button-group">
-          {{ govukButton({ text: "Save changes" if isEdit else "Set up team member" }) }}
+          {% if possibleDuplicates.length %}
+            {{ govukButton({
+              text: "Yes, this is a different person – add them",
+              name: "confirmNotDuplicate",
+              value: "yes"
+            }) }}
+          {% else %}
+            {{ govukButton({ text: "Save changes" if isEdit else "Set up team member" }) }}
+          {% endif %}
           <a class="govuk-link" href="/admin/users">Cancel</a>
         </div>
       </form>
