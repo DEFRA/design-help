@@ -232,14 +232,14 @@ function roleToExportGrade(role) {
   if (r === 'Interaction Designer' || r === 'Service Designer') {
     return 'SEO'
   }
-  if (r === 'Senior Interaction Designer' || r === 'Senior Service Designer') {
+  if (
+    r === 'Senior Interaction Designer' ||
+    r === 'Senior Service Designer' ||
+    r === 'Design Manager'
+  ) {
     return 'G7'
   }
-  if (
-    r === 'Principal Service Designer' ||
-    r === 'Design Manager' ||
-    r === 'Head of Design'
-  ) {
+  if (r === 'Principal Service Designer' || r === 'Head of Design') {
     return 'G6'
   }
   return ''

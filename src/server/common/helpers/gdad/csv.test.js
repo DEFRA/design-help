@@ -230,6 +230,15 @@ describe('#buildAdminExportCsv', () => {
     )
   })
 
+  test('Should export Design Manager at G7', () => {
+    const csv = buildAdminExportCsv([
+      { name: 'Test Manager', role: 'Design Manager', ...fullScores }
+    ])
+    expect(csv.split('\n')[1]).toBe(
+      'Test Manager,Design Manager,G7,3,3,3,2,2,3,3,17,5,,'
+    )
+  })
+
   test('Should leave scores, total and capability level blank when unscored', () => {
     const csv = buildAdminExportCsv([
       {
@@ -283,7 +292,7 @@ describe('#buildAdminExportCsv', () => {
       }
     ])
     expect(csv.split('\n')[1]).toBe(
-      '"Surname, ""Nickname"" First",Design Manager,G6,,,,,,,,,,,'
+      '"Surname, ""Nickname"" First",Design Manager,G7,,,,,,,,,,,'
     )
   })
 })
