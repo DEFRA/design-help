@@ -4,14 +4,18 @@ import {
   backendApi,
   BackendApiError
 } from '#/server/common/helpers/backend-api.js'
-import { getHeadOfDesignEmails } from '#/server/common/helpers/auth/user-session.js'
+import {
+  getHeadOfDesignEmails,
+  isBootstrapAdminEmail
+} from '#/server/common/helpers/auth/user-session.js'
 import { ALLOWED_ROLES } from '#/server/common/constants/design-help.js'
 import { requireHeadOfDesign } from './access.js'
 import { normaliseAllowedRole, normaliseEmailInput } from './helpers.js'
 
 /*
  * One-page "Set up a team member" form for the Head of Design: name, Defra
- * email, job title, line manager and the line-manager flag. Directory
+ * email, job title, line manager and the line-manager flag. When changing
+ * someone, the Head of Design can also give or remove admin access. Directory
  * fields (location, availability and so on) are left for the designer to
  * fill in when they sign in.
  */
@@ -85,12 +89,16 @@ export function findPossibleDuplicates(form, people) {
 /** Read the posted form into the shape the template repaints from. */
 function readForm(payload = {}) {
   const raw = payload.isLineManager
+  const rawAdmin = payload.isAdmin
   return {
     name: String(payload.name ?? '').trim(),
     email: normaliseEmailInput(payload.email),
     role: String(payload.role ?? '').trim(),
     managerId: String(payload.managerId ?? '').trim(),
     isLineManager: raw === 'yes' || raw === 'on' || raw === true,
+    // Undefined when the question was not on the page (or not answered):
+    // admin access is then left as it is.
+    isAdmin: rawAdmin === 'yes' ? true : rawAdmin === 'no' ? false : undefined,
     confirmedNotDuplicate: payload.confirmNotDuplicate === 'yes'
   }
 }
@@ -101,8 +109,27 @@ function formFromPerson(person) {
     email: person.email ?? '',
     role: person.role ?? '',
     managerId: person.managerId ?? NO_MANAGER,
-    isLineManager: Boolean(person.isLineManager)
+    isLineManager: Boolean(person.isLineManager),
+    isAdmin: Boolean(person.isAdmin)
   }
+}
+
+/**
+ * Whether the admin access question can be answered for this person, and if
+ * not, why. People made admin in service configuration are protected, and
+ * the Head of Design cannot remove their own admin access.
+ */
+export function adminAccessFor(existing, user) {
+  if (!existing) {
+    return { canChange: false, reason: null }
+  }
+  if (existing.email && isBootstrapAdminEmail(existing.email)) {
+    return { canChange: false, reason: 'protected' }
+  }
+  if (existing.id === user?.id) {
+    return { canChange: false, reason: 'self' }
+  }
+  return { canChange: Boolean(existing.email), reason: null }
 }
 
 /**
@@ -178,6 +205,7 @@ function viewContext({
   existing,
   form,
   people,
+  user,
   errors = {},
   duplicateChangeHref = null,
   possibleDuplicates = []
@@ -222,6 +250,15 @@ function viewContext({
       ...managerOptions
     ],
     reportCount,
+    adminAccess: existing
+      ? {
+          ...adminAccessFor(existing, user),
+          isAdmin:
+            Boolean(existing.isAdmin) ||
+            Boolean(existing.email && isBootstrapAdminEmail(existing.email))
+        }
+      : null,
+    profileHref: existing?.name ? `/admin/users/${existing.id}/edit` : null,
     wasLineManager: Boolean(existing?.isLineManager),
     errors,
     errorList: errorList(errors),
@@ -260,6 +297,23 @@ async function applyManagement(people, personId, before, form) {
   }
 }
 
+/** Give or remove admin access, only when allowed and actually changed. */
+async function applyAdminAccess(existing, form, user) {
+  if (form.isAdmin === undefined) {
+    return
+  }
+  if (!adminAccessFor(existing, user).canChange) {
+    return
+  }
+  // A new email that is a configured admin is protected too.
+  if (isBootstrapAdminEmail(form.email)) {
+    return
+  }
+  if (form.isAdmin !== Boolean(existing.isAdmin)) {
+    await backendApi.setAdmin(existing.id, form.isAdmin)
+  }
+}
+
 const DUPLICATE_EMAIL_MESSAGE =
   'That email address is already on the list. Change their details instead of adding them again'
 
@@ -287,7 +341,12 @@ export const teamMemberRoutes = [
       const people = await backendApi.listPeople()
       return h.view(
         'admin/team-member',
-        viewContext({ existing: null, form: readForm(), people })
+        viewContext({
+          existing: null,
+          form: readForm(),
+          people,
+          user: request.app.user
+        })
       )
     }
   },
@@ -314,6 +373,7 @@ export const teamMemberRoutes = [
               existing: null,
               form,
               people,
+              user: request.app.user,
               errors: errs,
               ...extra
             })
@@ -330,7 +390,13 @@ export const teamMemberRoutes = [
         if (possibleDuplicates.length) {
           return h.view(
             'admin/team-member',
-            viewContext({ existing: null, form, people, possibleDuplicates })
+            viewContext({
+              existing: null,
+              form,
+              people,
+              user: request.app.user,
+              possibleDuplicates
+            })
           )
         }
       }
@@ -376,7 +442,12 @@ export const teamMemberRoutes = [
       }
       return h.view(
         'admin/team-member',
-        viewContext({ existing, form: formFromPerson(existing), people })
+        viewContext({
+          existing,
+          form: formFromPerson(existing),
+          people,
+          user: request.app.user
+        })
       )
     }
   },
@@ -404,7 +475,14 @@ export const teamMemberRoutes = [
         h
           .view(
             'admin/team-member',
-            viewContext({ existing, form, people, errors: errs, ...extra })
+            viewContext({
+              existing,
+              form,
+              people,
+              user: request.app.user,
+              errors: errs,
+              ...extra
+            })
           )
           .code(400)
 
@@ -430,6 +508,7 @@ export const teamMemberRoutes = [
       }
 
       await applyManagement(people, existing.id, existing, form)
+      await applyAdminAccess(existing, form, request.app.user)
       return savedRedirect(h, existing.id, 'updated')
     }
   }

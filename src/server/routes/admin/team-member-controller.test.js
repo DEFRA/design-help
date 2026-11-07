@@ -24,6 +24,8 @@ vi.mock(
     return {
       ...original,
       getHeadOfDesignEmails: () => ['hod@defra.gov.uk'],
+      isBootstrapAdminEmail: (email) =>
+        String(email).toLowerCase() === 'boot@defra.gov.uk',
       refreshSessionUser: async (request) => {
         if (mockState.user) {
           request.yar.set('user', mockState.user)
@@ -54,6 +56,7 @@ vi.mock('#/server/common/helpers/backend-api.js', async (importOriginal) => {
       updatePerson: vi.fn(),
       replaceLineManagers: vi.fn(),
       setManager: vi.fn(),
+      setAdmin: vi.fn(),
       listHelpingPairs: vi.fn(async () => [])
     }
   }
@@ -67,7 +70,9 @@ const ids = {
   managerB: 'a00000000000000000000005',
   report: 'b00000000000000000000001',
   pending: 'b00000000000000000000002',
-  created: 'c00000000000000000000001'
+  created: 'c00000000000000000000001',
+  existingAdmin: 'd00000000000000000000001',
+  bootstrap: 'd00000000000000000000002'
 }
 
 function sessionUser(id, flags = {}) {
@@ -221,6 +226,23 @@ describe('#teamMemberRoutes', () => {
       expect(backendApi.updatePerson).not.toHaveBeenCalled()
       expect(backendApi.replaceLineManagers).not.toHaveBeenCalled()
       expect(backendApi.setManager).not.toHaveBeenCalled()
+      expect(backendApi.setAdmin).not.toHaveBeenCalled()
+    })
+
+    test('A non-Head-of-Design admin cannot give admin access by posting the field', async () => {
+      const { statusCode } = await post(
+        users.admin,
+        `/admin/team-member/${ids.report}`,
+        {
+          name: 'Rae Report',
+          email: `${ids.report}@defra.gov.uk`,
+          role: 'Interaction Designer',
+          managerId: ids.managerA,
+          isAdmin: 'yes'
+        }
+      )
+      expect(statusCode).toBe(statusCodes.forbidden)
+      expect(backendApi.setAdmin).not.toHaveBeenCalled()
     })
 
     test('Head of Design can open both forms', async () => {
@@ -662,6 +684,178 @@ describe('#teamMemberRoutes', () => {
     })
   })
 
+  describe('Admin access on the Change form', () => {
+    const reportFields = {
+      name: 'Rae Report',
+      email: `${ids.report}@defra.gov.uk`,
+      role: 'Interaction Designer',
+      managerId: ids.managerA
+    }
+    const adminFields = {
+      name: 'Ada Admin',
+      email: `${ids.existingAdmin}@defra.gov.uk`,
+      role: 'Service Designer',
+      managerId: ''
+    }
+    const bootFields = {
+      name: 'Sam Configured',
+      email: 'boot@defra.gov.uk',
+      role: 'Service Designer',
+      managerId: ''
+    }
+    const radio = (value, checked) =>
+      new RegExp(
+        `name="isAdmin" type="radio" value="${value}"${checked ? ' checked' : '>'}`
+      )
+
+    beforeEach(() => {
+      mockState.people.push(
+        person(ids.existingAdmin, { ...adminFields, isAdmin: true }),
+        person(ids.bootstrap, bootFields)
+      )
+    })
+
+    test('Shows the question with No selected for a non-admin', async () => {
+      const { result } = await get(
+        users.hod,
+        `/admin/team-member/${ids.report}`
+      )
+      expect(result).toContain('Admin access')
+      expect(result).toContain('Admins can manage people and access')
+      expect(result).toMatch(radio('no', true))
+      expect(result).toMatch(radio('yes', false))
+    })
+
+    test('Shows Yes selected for an admin', async () => {
+      const { result } = await get(
+        users.hod,
+        `/admin/team-member/${ids.existingAdmin}`
+      )
+      expect(result).toMatch(radio('yes', true))
+      expect(result).toMatch(radio('no', false))
+    })
+
+    test('Choosing Yes for a non-admin gives them admin access', async () => {
+      const { statusCode } = await post(
+        users.hod,
+        `/admin/team-member/${ids.report}`,
+        { ...reportFields, isAdmin: 'yes' }
+      )
+      expect(statusCode).toBe(302)
+      expect(backendApi.setAdmin).toHaveBeenCalledTimes(1)
+      expect(backendApi.setAdmin).toHaveBeenCalledWith(ids.report, true)
+    })
+
+    test('Choosing No for an admin removes their admin access', async () => {
+      await post(users.hod, `/admin/team-member/${ids.existingAdmin}`, {
+        ...adminFields,
+        isAdmin: 'no'
+      })
+      expect(backendApi.setAdmin).toHaveBeenCalledTimes(1)
+      expect(backendApi.setAdmin).toHaveBeenCalledWith(ids.existingAdmin, false)
+    })
+
+    test.each([
+      ['non-admin stays No', ids.report, reportFields, 'no'],
+      ['admin stays Yes', ids.existingAdmin, adminFields, 'yes'],
+      ['question not answered', ids.report, reportFields, undefined]
+    ])(
+      'No backend admin call when unchanged (%s)',
+      async (_l, id, fields, isAdmin) => {
+        const { statusCode } = await post(
+          users.hod,
+          `/admin/team-member/${id}`,
+          {
+            ...fields,
+            ...(isAdmin ? { isAdmin } : {})
+          }
+        )
+        expect(statusCode).toBe(302)
+        expect(backendApi.setAdmin).not.toHaveBeenCalled()
+      }
+    )
+
+    test('A protected admin shows a read-only line and cannot be changed', async () => {
+      const { result } = await get(
+        users.hod,
+        `/admin/team-member/${ids.bootstrap}`
+      )
+      expect(result).toContain(
+        'Admin access: Yes (protected — set in configuration)'
+      )
+      expect(result).not.toContain('name="isAdmin"')
+
+      const { statusCode } = await post(
+        users.hod,
+        `/admin/team-member/${ids.bootstrap}`,
+        { ...bootFields, isAdmin: 'no' }
+      )
+      expect(statusCode).toBe(302)
+      expect(backendApi.setAdmin).not.toHaveBeenCalled()
+    })
+
+    test('Changing someone to a configured admin email does not touch admin access', async () => {
+      await post(users.hod, `/admin/team-member/${ids.report}`, {
+        ...reportFields,
+        email: 'BOOT@defra.gov.uk',
+        isAdmin: 'yes'
+      })
+      expect(backendApi.setAdmin).not.toHaveBeenCalled()
+    })
+
+    test('Head of Design cannot remove their own admin access', async () => {
+      const { result } = await get(users.hod, `/admin/team-member/${ids.hod}`)
+      expect(result).toContain('you cannot remove your own admin access')
+      expect(result).not.toContain('name="isAdmin"')
+
+      const { statusCode } = await post(
+        users.hod,
+        `/admin/team-member/${ids.hod}`,
+        {
+          name: 'Pat Head',
+          email: 'hod@defra.gov.uk',
+          role: 'Head of Design',
+          managerId: '',
+          isLineManager: 'yes',
+          isAdmin: 'no'
+        }
+      )
+      expect(statusCode).toBe(302)
+      expect(backendApi.setAdmin).not.toHaveBeenCalled()
+    })
+
+    test('The Set up a team member form does not ask about admin access', async () => {
+      const { result } = await get(users.hod, '/admin/team-member/new')
+      expect(result).not.toContain('name="isAdmin"')
+
+      await post(users.hod, '/admin/team-member/new', {
+        ...validNew,
+        isAdmin: 'yes'
+      })
+      expect(backendApi.createPerson).toHaveBeenCalled()
+      expect(backendApi.setAdmin).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Find help profile link on the Change form', () => {
+    test('Shown when the person has a profile', async () => {
+      const { result } = await get(
+        users.hod,
+        `/admin/team-member/${ids.report}`
+      )
+      expect(result).toContain(`href="/admin/users/${ids.report}/edit"`)
+      expect(result).toContain('Edit their Find help profile')
+    })
+
+    test('Not shown for an email-only entry', async () => {
+      const { result } = await get(
+        users.hod,
+        `/admin/team-member/${ids.pending}`
+      )
+      expect(result).not.toContain('Edit their Find help profile')
+    })
+  })
+
   describe('People and access', () => {
     test('Head of Design sees the new form button, Change links and the success banner', async () => {
       mockState.people.push(person(ids.created, { name: 'Nia New' }))
@@ -675,6 +869,23 @@ describe('#teamMemberRoutes', () => {
       expect(result).toContain('href="/admin/add-profile?new=1"')
       expect(result).toContain('Nia New is set up.')
       expect(result).toContain('see this when they sign in.')
+    })
+
+    test('Rows only offer Send invite, Change and Delete / Remove from list', async () => {
+      mockState.people.push(person(ids.existingAdmin, { isAdmin: true }))
+      const { result } = await get(users.hod, '/admin/users')
+      expect(result).not.toContain('Make admin')
+      expect(result).not.toContain('Remove admin')
+      expect(result).not.toContain('/admin/users/grant-admin')
+      expect(result).not.toContain('/admin/users/revoke-admin')
+      expect(result).not.toContain('Edit profile')
+      expect(result).not.toContain(`href="/admin/users/${ids.report}/edit"`)
+      expect(result).toContain(
+        'Delete<span class="govuk-visually-hidden"> for Rae Report</span>'
+      )
+      expect(result).toContain(
+        'Remove from list<span class="govuk-visually-hidden"> for pending@defra.gov.uk</span>'
+      )
     })
 
     test('Other admins keep the old wizard and get no Change links', async () => {

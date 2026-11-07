@@ -116,6 +116,34 @@
           ]
         }) }}
 
+        {% if adminAccess %}
+          {% if adminAccess.canChange %}
+            {{ govukRadios({
+              name: "isAdmin",
+              classes: "govuk-radios--inline",
+              fieldset: {
+                legend: { text: "Admin access", classes: "govuk-fieldset__legend--m" }
+              },
+              hint: { text: "Admins can manage people and access" },
+              items: [
+                { value: "yes", text: "Yes", checked: form.isAdmin },
+                { value: "no", text: "No", checked: not form.isAdmin }
+              ]
+            }) }}
+          {% else %}
+            <h2 class="govuk-heading-m">Admin access</h2>
+            <p class="govuk-body" id="admin-access-readonly">
+              {% if adminAccess.reason == "protected" %}
+                Admin access: Yes (protected — set in configuration)
+              {% elif adminAccess.reason == "self" %}
+                Admin access: {{ "Yes" if adminAccess.isAdmin else "No" }} (you cannot remove your own admin access)
+              {% else %}
+                Admin access: {{ "Yes" if adminAccess.isAdmin else "No" }}
+              {% endif %}
+            </p>
+          {% endif %}
+        {% endif %}
+
         <div class="govuk-button-group">
           {% if possibleDuplicates.length %}
             {{ govukButton({
@@ -129,6 +157,12 @@
           <a class="govuk-link" href="/admin/users">Cancel</a>
         </div>
       </form>
+
+      {% if profileHref %}
+        <p class="govuk-body">
+          <a class="govuk-link" href="{{ profileHref }}">Edit their Find help profile</a>
+        </p>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

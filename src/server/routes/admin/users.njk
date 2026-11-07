@@ -33,7 +33,7 @@
 
       {% if user.isHeadOfDesignSuperUser %}
         <p class="govuk-body">
-          As Head of Design you can grant or remove admin access for people on this list. Admins set in service configuration cannot be removed here. Use the GDaD evidence admin tool to review capability evidence.
+          As Head of Design you can give or remove admin access for people on this list: select Change next to their name. Admins set in service configuration cannot be removed here. Use the GDaD evidence admin tool to review capability evidence.
         </p>
       {% endif %}
 
@@ -116,31 +116,13 @@
                     {% elif row.accessRemoved %}
                       <span class="govuk-hint govuk-!-margin-bottom-0">Access removed — can’t invite</span>
                     {% endif %}
-                    {% if user.isHeadOfDesignSuperUser and row.email and row.canManageAdminAccess %}
-                      {% if row.isAdmin %}
-                        <form method="post" action="/admin/users/revoke-admin">
-                          <input type="hidden" name="crumb" value="{{ crumb }}">
-                          <input type="hidden" name="email" value="{{ row.email }}">
-                          <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Remove admin</button>
-                        </form>
-                      {% else %}
-                        <form method="post" action="/admin/users/grant-admin">
-                          <input type="hidden" name="crumb" value="{{ crumb }}">
-                          <input type="hidden" name="email" value="{{ row.email }}">
-                          <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Make admin</button>
-                        </form>
-                      {% endif %}
-                    {% elif user.isHeadOfDesignSuperUser and row.email and row.isBootstrapAdmin %}
-                      <span class="govuk-hint govuk-!-margin-bottom-0">Protected admin</span>
-                    {% endif %}
                     {% if user.isHeadOfDesignSuperUser %}
                       <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/admin/team-member/{{ row.id }}">Change<span class="govuk-visually-hidden"> team set-up for {{ row.name or row.email }}</span></a>
                     {% endif %}
                     {% if row.hasProfile %}
-                      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/admin/users/{{ row.id }}/edit">Edit profile<span class="govuk-visually-hidden"> for {{ row.name }}</span></a>
-                      <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/admin/profile/{{ row.id }}/confirm-delete">Delete</a>
+                      <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/admin/profile/{{ row.id }}/confirm-delete">Delete<span class="govuk-visually-hidden"> for {{ row.name or row.email }}</span></a>
                     {% else %}
-                      <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/admin/approved-emails/{{ row.id }}/confirm-delete">Remove from list</a>
+                      <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="/admin/approved-emails/{{ row.id }}/confirm-delete">Remove from list<span class="govuk-visually-hidden"> for {{ row.name or row.email }}</span></a>
                     {% endif %}
                   </div>
                 </td>
