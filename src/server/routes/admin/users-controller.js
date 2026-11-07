@@ -13,6 +13,26 @@ import {
   normaliseEmailInput
 } from './helpers.js'
 
+/** Success banner after the Head of Design sets up or changes someone. */
+function teamMemberSavedBanner(query, people, user) {
+  if (!user?.isHeadOfDesignSuperUser || !query.person) {
+    return null
+  }
+  const person = people.find((p) => p.id === String(query.person))
+  if (!person?.name) {
+    return null
+  }
+  if (query.saved === 'created') {
+    return `${person.name} is set up. They’ll see this when they sign in.`
+  }
+  if (query.saved === 'updated') {
+    return person.activatedAt
+      ? `${person.name}’s details have been updated.`
+      : `${person.name}’s details have been updated. They’ll see this when they sign in.`
+  }
+  return null
+}
+
 export const usersRoutes = [
   {
     method: 'GET',
@@ -26,11 +46,17 @@ export const usersRoutes = [
       const people = await backendApi.listPeople()
       const rows = buildAdminUserRows(people)
       const adminMsg = adminMessageFor(request.query.adminMsg)
+      const savedBanner = teamMemberSavedBanner(
+        request.query,
+        people,
+        request.app.user
+      )
 
       return h.view('admin/users', {
         pageTitle: 'Admin',
         rows,
-        adminMsg
+        adminMsg,
+        savedBanner
       })
     }
   },

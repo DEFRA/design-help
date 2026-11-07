@@ -1,0 +1,104 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      {{ govukBackLink({ text: "Back to People and access", href: "/admin/users" }) }}
+
+      {% if errorList.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errorList
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">{{ heading }}</h1>
+
+      <p class="govuk-body">
+        {% if isEdit %}
+          Change who this person is and who manages them.
+        {% else %}
+          Add someone to the team before they sign in. They’ll fill in the rest of their profile, such as location and availability, when they first sign in.
+        {% endif %}
+      </p>
+
+      {% if duplicateChangeHref %}
+        <p class="govuk-body">
+          <a class="govuk-link" href="{{ duplicateChangeHref }}">Change the details of the person who already has this email address</a>
+        </p>
+      {% endif %}
+
+      <form method="post" action="{{ formAction }}" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+
+        {{ govukInput({
+          label: { text: "Full name", classes: "govuk-label--m" },
+          id: "name",
+          name: "name",
+          value: form.name,
+          autocomplete: "off",
+          spellcheck: false,
+          errorMessage: { text: errors.name } if errors.name
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Defra email address", classes: "govuk-label--m" },
+          hint: { text: "They’ll use this to sign in, for example name@defra.gov.uk" },
+          id: "email",
+          name: "email",
+          type: "email",
+          value: form.email,
+          autocomplete: "off",
+          spellcheck: false,
+          errorMessage: { text: errors.email } if errors.email
+        }) }}
+
+        {{ govukSelect({
+          label: { text: "Job title", classes: "govuk-label--m" },
+          id: "role",
+          name: "role",
+          items: roleItems,
+          errorMessage: { text: errors.role } if errors.role
+        }) }}
+
+        {{ govukSelect({
+          label: { text: "Line manager", classes: "govuk-label--m" },
+          hint: { text: "Only people marked as managing other designers are listed" },
+          id: "managerId",
+          name: "managerId",
+          items: managerItems,
+          errorMessage: { text: errors.managerId } if errors.managerId
+        }) }}
+
+        {% if isEdit and wasLineManager and reportCount > 0 %}
+          {{ govukWarningText({
+            text: "This person manages " + reportCount + (" person" if reportCount == 1 else " people") + ". If you untick the box below, " + ("that person" if reportCount == 1 else "those people") + " will have no line manager.",
+            iconFallbackText: "Warning"
+          }) }}
+        {% elif isEdit and wasLineManager %}
+          <p class="govuk-body">If you untick the box below, they will no longer appear in the line manager list.</p>
+        {% endif %}
+
+        {{ govukCheckboxes({
+          name: "isLineManager",
+          classes: "govuk-checkboxes--small",
+          fieldset: {
+            legend: { text: "Line management", classes: "govuk-fieldset__legend--m" }
+          },
+          items: [
+            {
+              value: "yes",
+              text: "This person manages other designers",
+              checked: form.isLineManager
+            }
+          ]
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({ text: "Save changes" if isEdit else "Set up team member" }) }}
+          <a class="govuk-link" href="/admin/users">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

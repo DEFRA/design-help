@@ -15,10 +15,15 @@
     {{ member.role }}
   </p>
 
-  <p class="govuk-body-s app-member-card__facts">
-    <strong>Experience:</strong> {{ member.experience }}<br>
-    <strong>Location:</strong> {{ member.location }}
-  </p>
+  {% if member.experience or member.location %}
+    <p class="govuk-body-s app-member-card__facts">
+      {% if member.experience %}<strong>Experience:</strong> {{ member.experience }}{% endif %}
+      {% if member.experience and member.location %}<br>{% endif %}
+      {% if member.location %}<strong>Location:</strong> {{ member.location }}{% endif %}
+    </p>
+  {% else %}
+    <p class="govuk-body-s govuk-hint app-member-card__facts">Profile not filled in yet.</p>
+  {% endif %}
 
   {% if member.availabilityStatus == "Free to help" %}
     <strong class="govuk-tag govuk-tag--green">Free to help</strong>

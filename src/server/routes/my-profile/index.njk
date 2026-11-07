@@ -6,6 +6,12 @@
       <h1 class="govuk-heading-xl">My profile</h1>
 
       {% if profile %}
+        {% if not profile.location or not profile.experience %}
+          {{ govukInsetText({
+            html: 'Your profile has been started for you. <a class="govuk-link" href="/my-profile/edit">Finish your profile</a> by adding your location, experience and availability.'
+          }) }}
+        {% endif %}
+
         <div class="govuk-button-group">
           <a href="/my-profile/edit" class="govuk-button" data-module="govuk-button">Edit my profile</a>
           <a href="/my-profile/helping" class="govuk-button govuk-button--secondary" data-module="govuk-button">I&rsquo;m helping someone</a>
