@@ -17,9 +17,11 @@
         <li class="design-help-admin-tools__item">
           <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'longterm' %} govuk-!-font-weight-bold{% endif %}" href="/admin/long-term-helping"{% if adminToolsActiveTab == 'longterm' %} aria-current="page"{% endif %}>Long-term help</a>
         </li>
-        <li class="design-help-admin-tools__item">
-          <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'gdad' %} govuk-!-font-weight-bold{% endif %}" href="/review/gdad-evidence"{% if adminToolsActiveTab == 'gdad' %} aria-current="page"{% endif %}>GDaD evidence</a>
-        </li>
+        {% if gdadReviewerRole and gdadReviewerRole != 'none' %}
+          <li class="design-help-admin-tools__item">
+            <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'gdad' %} govuk-!-font-weight-bold{% endif %}" href="/review/gdad-evidence"{% if adminToolsActiveTab == 'gdad' %} aria-current="page"{% endif %}>GDaD evidence</a>
+          </li>
+        {% endif %}
       {% endif %}
     </ul>
   </nav>

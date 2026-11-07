@@ -5,6 +5,7 @@ import { config } from '#/config/config.js'
 import { buildNavigation } from './build-navigation.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 import { isSignInAvailable } from '#/server/common/helpers/auth/sign-in-availability.js'
+import { getGdadReviewerRole } from '#/server/common/helpers/gdad/access.js'
 
 const logger = createLogger()
 const assetPath = config.get('assetPath')
@@ -48,6 +49,7 @@ export function context(request) {
     navigation: buildNavigation(request),
     user,
     isAdmin: Boolean(user?.isAdmin),
+    gdadReviewerRole: getGdadReviewerRole(user),
     currentPath: request?.path ?? '/',
     appVersion: config.get('serviceVersion') ?? 'dev',
     signInAvailable: isSignInAvailable(),

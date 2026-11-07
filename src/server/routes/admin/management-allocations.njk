@@ -11,7 +11,7 @@
       <p class="govuk-body">
         Choose who is the responsible manager for each registered team member. Only people listed on
         <a class="govuk-link" href="/admin/identify-managers">Identify managers</a>
-        appear in the dropdown. This controls who can open their GDaD review pages when a manager is set: the assigned manager and Head of Design can review; other admins cannot. If you leave someone as unassigned, any admin can still review their GDaD evidence.
+        appear in the dropdown. This controls who can see and score their GDaD evidence: only the assigned manager (who does not need to be an admin) and Head of Design. Other admins cannot. If you leave someone unassigned, only Head of Design can review their GDaD evidence.
       </p>
 
       {% if not managerOptions or managerOptions.length == 0 %}

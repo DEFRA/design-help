@@ -58,6 +58,9 @@
             </ul>
           </nav>
           <div class="design-help-nav__account">
+            {% if gdadReviewerRole == 'line_manager' %}
+              <a class="govuk-link govuk-link--no-visited-state" href="/review/gdad-evidence">My team's GDaD evidence</a>
+            {% endif %}
             {% if isAdmin %}
               <a class="govuk-link govuk-link--no-visited-state" href="/admin/users">Admin</a>
             {% endif %}

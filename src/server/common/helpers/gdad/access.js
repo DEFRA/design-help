@@ -1,16 +1,16 @@
 import { backendApi } from '#/server/common/helpers/backend-api.js'
 
 /**
- * GDaD reviewer roles, ported from the prototype's management-access lib:
- * - hod: admin + configured Head of Design email + 'Head of Design' job
- *   title (flag computed at session refresh) — may review everyone
- * - line_manager: admin who is a line manager — may review only people
- *   allocated to them
- * - admin: any other admin — may review only people with no allocation
- * - none: everyone else
+ * GDaD reviewer roles:
+ * - hod: Head of Design super user (admin + configured Head of Design email
+ *   + 'Head of Design' job title, flag computed at session refresh) — may
+ *   review everyone, including designers with no manager allocated
+ * - line_manager: anyone flagged as a line manager, admin or not — may
+ *   review only people allocated to them
+ * - none: everyone else, including admins who are neither of the above
  */
 export function getGdadReviewerRole(user) {
-  if (!user?.isAdmin) {
+  if (!user) {
     return 'none'
   }
   if (user.isHeadOfDesignSuperUser) {
@@ -19,7 +19,7 @@ export function getGdadReviewerRole(user) {
   if (user.isLineManager) {
     return 'line_manager'
   }
-  return 'admin'
+  return 'none'
 }
 
 export function canAccessGdadReviewSection(user) {
@@ -33,15 +33,13 @@ export function canAccessGdadReviewSection(user) {
 export function canReviewGdadEvidenceForTarget(user, target) {
   const role = getGdadReviewerRole(user)
   if (role === 'hod') {
+    // Includes the Head of Design self-review special case
     return true
   }
-  if (role === 'line_manager') {
-    return target.managerId === user.id
+  if (role !== 'line_manager' || target?.id === user.id) {
+    return false
   }
-  if (role === 'admin') {
-    return !target.managerId
-  }
-  return false
+  return Boolean(target?.managerId) && target.managerId === user.id
 }
 
 /** All people the user may review, with profiles, excluding themselves. */
