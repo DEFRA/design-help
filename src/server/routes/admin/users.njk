@@ -110,8 +110,10 @@
                     {% if row.canInvite %}
                       <form method="post" action="/admin/users/{{ row.id }}/invite">
                         <input type="hidden" name="crumb" value="{{ crumb }}">
-                        <button type="submit" class="govuk-button" data-module="govuk-button">Send invite<span class="govuk-visually-hidden"> to {{ row.name or row.email }}</span></button>
+                        <button type="submit" class="govuk-button" data-module="govuk-button" data-prevent-double-click="true">Send invite<span class="govuk-visually-hidden"> to {{ row.name or row.email }}</span></button>
                       </form>
+                    {% elif row.accessRemoved %}
+                      <span class="govuk-hint govuk-!-margin-bottom-0">Access removed — can’t invite</span>
                     {% endif %}
                     {% if user.isHeadOfDesignSuperUser and row.email and row.canManageAdminAccess %}
                       {% if row.isAdmin %}

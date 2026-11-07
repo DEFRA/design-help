@@ -10,7 +10,7 @@ const logger = createLogger()
  */
 export function isInvitable(person) {
   return Boolean(
-    person?.email && person.approved !== false && !person.activatedAt
+    person?.email && person.approved === true && !person.activatedAt
   )
 }
 
@@ -30,7 +30,7 @@ export async function sendInvite(server, person) {
   })
   const signInLink = `${config.get('appBaseUrl')}/sign-in/verify?token=${token}`
   await sendMagicLinkEmail(email, signInLink)
-  logger.info(`Invite sent to ${email}`)
+  logger.info(`Invite sent to person ${person.id}`)
 }
 
 /**
@@ -45,7 +45,7 @@ export async function sendInvites(server, people) {
       await sendInvite(server, person)
       sent += 1
     } catch (error) {
-      logger.error(error, `Failed to send invite to ${person.email}`)
+      logger.error(error, `Failed to send invite to person ${person.id}`)
       failed.push(person)
     }
   }

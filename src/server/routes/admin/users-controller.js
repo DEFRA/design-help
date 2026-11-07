@@ -57,12 +57,18 @@ export const usersRoutes = [
       const [inviteResult] = request.yar.flash(INVITE_RESULT_FLASH)
       const invitablePeople = people.filter(isInvitable)
       const invitableIds = new Set(invitablePeople.map((person) => person.id))
+      const accessRemovedIds = new Set(
+        people
+          .filter((person) => person.approved !== true)
+          .map((person) => person.id)
+      )
 
       return h.view('admin/users', {
         pageTitle: 'Admin',
         rows: rows.map((row) => ({
           ...row,
-          canInvite: invitableIds.has(row.id)
+          canInvite: invitableIds.has(row.id),
+          accessRemoved: row.pendingActivation && accessRemovedIds.has(row.id)
         })),
         adminMsg,
         savedBanner,

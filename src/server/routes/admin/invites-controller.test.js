@@ -4,6 +4,7 @@ import { createServer } from '#/server/server.js'
 import { config } from '#/config/config.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
 import { sendMagicLinkEmail } from '#/server/common/helpers/notify.js'
+import { createLogger } from '#/server/common/helpers/logging/logger.js'
 
 /*
  * The "Send invite" and "Invite everyone who's pending" buttons on People
@@ -57,7 +58,8 @@ const ids = {
   pendingNamed: 'b00000000000000000000001',
   pendingEmailOnly: 'b00000000000000000000002',
   noEmail: 'b00000000000000000000003',
-  removed: 'b00000000000000000000004'
+  removed: 'b00000000000000000000004',
+  unknownApproval: 'b00000000000000000000005'
 }
 
 const users = {
@@ -118,6 +120,11 @@ function buildPeople() {
       email: 'removed@defra.gov.uk',
       name: 'Rem Oved',
       approved: false
+    }),
+    // Approval not recorded: sign-in would refuse them, so no invite either
+    person(ids.unknownApproval, {
+      email: 'unknown.approval@defra.gov.uk',
+      approved: undefined
     })
   ]
 }
@@ -211,7 +218,24 @@ describe('#invitesRoutes', () => {
       expect(result).not.toContain(
         `action="/admin/users/${ids.removed}/invite"`
       )
+      expect(result).not.toContain(
+        `action="/admin/users/${ids.unknownApproval}/invite"`
+      )
       expect(result).toContain('Invite everyone who’s pending (2)')
+    })
+
+    test('Send invite buttons guard against double clicks', async () => {
+      const { result } = await get(users.admin, '/admin/users')
+      const buttons = result.match(/<button[^>]*>Send invite</g)
+      expect(buttons).toHaveLength(2)
+      for (const button of buttons) {
+        expect(button).toContain('data-prevent-double-click="true"')
+      }
+    })
+
+    test('Explains why a pending person whose access was removed has no invite button', async () => {
+      const { result } = await get(users.admin, '/admin/users')
+      expect(result.match(/Access removed — can’t invite/g)).toHaveLength(2)
     })
 
     test('Hides the invite-all button when nobody is pending', async () => {
@@ -249,6 +273,29 @@ describe('#invitesRoutes', () => {
       expect(page.result).toContain('Invite sent to Pat Pending.')
     })
 
+    test('Logs the person’s id, never their email address or the link', async () => {
+      const logger = createLogger()
+      const info = vi.spyOn(logger, 'info')
+      const error = vi.spyOn(logger, 'error')
+      sendMagicLinkEmail.mockRejectedValueOnce(new Error('notify down'))
+
+      await post(users.admin, `/admin/users/${ids.pendingNamed}/invite`)
+      await post(users.admin, `/admin/users/${ids.pendingEmailOnly}/invite`)
+
+      const logged = [...info.mock.calls, ...error.mock.calls]
+        .flat()
+        .map((value) => String(value))
+        .join(' ')
+      expect(logged).toContain(
+        `Failed to send invite to person ${ids.pendingNamed}`
+      )
+      expect(logged).toContain(`Invite sent to person ${ids.pendingEmailOnly}`)
+      expect(logged).not.toContain('@defra.gov.uk')
+      expect(logged).not.toContain('token=')
+      info.mockRestore()
+      error.mockRestore()
+    })
+
     test('An invite link signs the person in', async () => {
       await post(users.admin, `/admin/users/${ids.pendingEmailOnly}/invite`)
       const [, link] = sendMagicLinkEmail.mock.calls[0]
@@ -263,6 +310,7 @@ describe('#invitesRoutes', () => {
       ['has already signed in', ids.active],
       ['has no email address', ids.noEmail],
       ['is no longer on the approved list', ids.removed],
+      ['has no recorded approval', ids.unknownApproval],
       ['is not on the list at all', 'f00000000000000000000099']
     ])('Refuses someone who %s', async (_label, id) => {
       const response = await post(users.admin, `/admin/users/${id}/invite`)
@@ -300,7 +348,9 @@ describe('#invitesRoutes', () => {
       expect(result).not.toContain('active@defra.gov.uk')
       expect(result).not.toContain('removed@defra.gov.uk')
       expect(result).toContain('action="/admin/users/invite-pending"')
-      expect(result).toContain('Send invites')
+      expect(result).toMatch(
+        /<button[^>]*data-prevent-double-click="true"[^>]*>Send invites</
+      )
       expect(result).toContain('Cancel')
       expect(sendMagicLinkEmail).not.toHaveBeenCalled()
     })
