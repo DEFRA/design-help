@@ -168,7 +168,7 @@ export const gdadReviewRoutes = [
         .type('text/csv')
         .header(
           'content-disposition',
-          'attachment; filename="GDaD-admin-export.csv"'
+          'attachment; filename="GDaD-scores-export.csv"'
         )
     }
   },

@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 
 import { createServer } from '#/server/server.js'
 import { statusCodes } from '#/server/common/constants/status-codes.js'
+import { backendApi } from '#/server/common/helpers/backend-api.js'
 
 /*
  * Route-level checks of who may use the GDaD review pages. The signed-in
@@ -40,6 +41,8 @@ const ids = {
   otherManager: 'a00000000000000000000003',
   admin: 'a00000000000000000000004',
   designer: 'a00000000000000000000005',
+  adminManager: 'a00000000000000000000006',
+  adminManagersReport: 'b00000000000000000000004',
   ownReport: 'b00000000000000000000001',
   otherReport: 'b00000000000000000000002',
   unallocated: 'b00000000000000000000003'
@@ -66,7 +69,11 @@ const users = {
   }),
   manager: sessionUser(ids.manager, { isLineManager: true }),
   admin: sessionUser(ids.admin, { isAdmin: true }),
-  designer: sessionUser(ids.designer)
+  designer: sessionUser(ids.designer),
+  adminManager: sessionUser(ids.adminManager, {
+    isAdmin: true,
+    isLineManager: true
+  })
 }
 
 const people = [
@@ -104,6 +111,13 @@ const people = [
     role: 'Head of Design',
     managerId: null,
     gdad: {}
+  },
+  {
+    id: ids.adminManagersReport,
+    name: 'Dee Admin-Managers-Report',
+    role: 'Service Designer',
+    managerId: ids.adminManager,
+    gdad: {}
   }
 ]
 
@@ -130,6 +144,23 @@ describe('#gdadReviewRoutes access', () => {
     mockState.user = user
     return server.inject({ method: 'GET', url })
   }
+
+  // Forms are protected by crumb: the form field must match the cookie
+  async function post(user, url, payload) {
+    mockState.user = user
+    return server.inject({
+      method: 'POST',
+      url,
+      headers: { cookie: 'crumb=test-crumb' },
+      payload: { crumb: 'test-crumb', ...payload }
+    })
+  }
+
+  const scorePayload = { score_design_communication: '2' }
+  const saveRoutes = [
+    { name: 'whole-person save', url: personUrl },
+    { name: 'single-skill save', url: skillUrl }
+  ]
 
   describe('Non-admin line manager', () => {
     test('Sees only their own report on the review list', async () => {
@@ -182,6 +213,14 @@ describe('#gdadReviewRoutes access', () => {
       expect(result).toContain('Ada Own-Report')
       expect(result).not.toContain('Bea Other-Report')
       expect(result).not.toContain('Cy Unallocated')
+    })
+
+    test('CSV export has a neutral file name', async () => {
+      const { headers } = await get(
+        users.manager,
+        '/review/gdad-evidence/export.csv'
+      )
+      expect(headers['content-disposition']).toContain('GDaD-scores-export.csv')
     })
 
     test('Still cannot open admin pages', async () => {
@@ -253,6 +292,72 @@ describe('#gdadReviewRoutes access', () => {
       )
       expect(result).toContain('Cy Unallocated')
       expect(result).toContain('Bea Other-Report')
+    })
+  })
+
+  describe('Admin who is also a line manager', () => {
+    test('Sees only their own report, with the Admin menu', async () => {
+      const { statusCode, result } = await get(
+        users.adminManager,
+        '/review/gdad-evidence'
+      )
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toContain('Dee Admin-Managers-Report')
+      expect(result).not.toContain('Ada Own-Report')
+      expect(result).not.toContain('Cy Unallocated')
+      expect(result).toContain('href="/admin/users"')
+      expect(result).toContain('aria-label="Admin tools"')
+    })
+
+    test('May open their own report only', async () => {
+      expect(
+        (await get(users.adminManager, personUrl(ids.adminManagersReport)))
+          .statusCode
+      ).toBe(statusCodes.ok)
+      for (const id of [ids.ownReport, ids.unallocated]) {
+        expect((await get(users.adminManager, personUrl(id))).statusCode).toBe(
+          statusCodes.forbidden
+        )
+      }
+    })
+  })
+
+  describe.each(saveRoutes)('Saving scores ($name)', ({ url }) => {
+    test.each([
+      ['line manager, another manager’s report', 'manager', ids.otherReport],
+      ['line manager, unallocated person', 'manager', ids.unallocated],
+      ['plain admin, unallocated person', 'admin', ids.unallocated],
+      ['plain admin, allocated person', 'admin', ids.ownReport],
+      ['non-manager non-admin', 'designer', ids.ownReport]
+    ])('Refused for %s', async (_label, who, id) => {
+      const { statusCode } = await post(users[who], url(id), scorePayload)
+      expect(statusCode).toBe(statusCodes.forbidden)
+      expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
+    })
+
+    test.each([
+      ['line manager, own report', 'manager', ids.ownReport],
+      [
+        'admin line manager, own report',
+        'adminManager',
+        ids.adminManagersReport
+      ],
+      ['Head of Design, unallocated person', 'hod', ids.unallocated],
+      ['Head of Design, another manager’s report', 'hod', ids.otherReport]
+    ])('Allowed for %s', async (_label, who, id) => {
+      const { statusCode, headers } = await post(
+        users[who],
+        url(id),
+        scorePayload
+      )
+      expect(statusCode).toBe(302)
+      expect(headers.location).toContain('saved=1')
+      expect(backendApi.saveGdadScores).toHaveBeenCalledTimes(1)
+      const [savedId, scores, reviewerId] =
+        backendApi.saveGdadScores.mock.calls[0]
+      expect(savedId).toBe(id)
+      expect(scores.design_communication).toBe(2)
+      expect(reviewerId).toBe(users[who].id)
     })
   })
 })
