@@ -46,7 +46,7 @@ export function context(request) {
     serviceName: config.get('serviceName'),
     serviceUrl: '/',
     breadcrumbs: [],
-    navigation: buildNavigation(request),
+    navigation: buildNavigation(request, user),
     user,
     isAdmin: Boolean(user?.isAdmin),
     gdadReviewerRole: getGdadReviewerRole(user),

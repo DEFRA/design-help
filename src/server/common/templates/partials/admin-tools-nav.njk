@@ -1,4 +1,4 @@
-{# Horizontal admin shortcuts. Set adminToolsActiveTab: 'people' | 'identifymanagers' | 'managers' | 'longterm' | 'gdad' before including. #}
+{# Horizontal admin shortcuts. Set adminToolsActiveTab: 'people' | 'identifymanagers' | 'managers' | 'longterm' before including. #}
 <div class="design-help-admin-tools govuk-!-margin-bottom-6">
   <nav class="design-help-admin-tools__nav" aria-label="Admin tools">
     <ul class="design-help-admin-tools__list">
@@ -17,11 +17,6 @@
         <li class="design-help-admin-tools__item">
           <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'longterm' %} govuk-!-font-weight-bold{% endif %}" href="/admin/long-term-helping"{% if adminToolsActiveTab == 'longterm' %} aria-current="page"{% endif %}>Long-term help</a>
         </li>
-        {% if gdadReviewerRole and gdadReviewerRole != 'none' %}
-          <li class="design-help-admin-tools__item">
-            <a class="govuk-link govuk-link--no-visited-state{% if adminToolsActiveTab == 'gdad' %} govuk-!-font-weight-bold{% endif %}" href="/review/gdad-evidence"{% if adminToolsActiveTab == 'gdad' %} aria-current="page"{% endif %}>GDaD evidence</a>
-          </li>
-        {% endif %}
       {% endif %}
     </ul>
   </nav>

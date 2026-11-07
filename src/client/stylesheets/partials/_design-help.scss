@@ -120,13 +120,6 @@ $design-help-border: #b1b4b6;
   align-items: flex-start;
 }
 
-.design-help-nav__account-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-
 // Sign out is a crumb-protected POST form; make its button read as a link
 .design-help-nav__signout-form {
   margin: 0;

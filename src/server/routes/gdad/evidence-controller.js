@@ -5,7 +5,6 @@ import {
   SKILL_KEY_SET,
   MAX_EVIDENCE_LENGTH,
   GDAD_SKILLS_MATRIX_URL,
-  getCapabilityBandFromScores,
   getFrameworkRolePageLabel,
   roleFrameworkPageUrl
 } from '#/server/common/helpers/gdad/constants.js'
@@ -13,7 +12,11 @@ import {
   decodeCsvUpload,
   parseGdadTemplateCsv
 } from '#/server/common/helpers/gdad/csv.js'
-import { buildSkillRows, requireOwnApplicablePerson } from './helpers.js'
+import {
+  buildCapabilityBand,
+  buildSkillRows,
+  requireOwnApplicablePerson
+} from './helpers.js'
 
 function frameworkContext(role) {
   return {
@@ -53,12 +56,7 @@ export const gdadEvidenceRoutes = [
       }
 
       const skillRows = buildSkillRows(person.gdad, person.role)
-      const capabilityBand = getCapabilityBandFromScores(
-        skillRows.map((s) => s.officialScore)
-      )
-      if (capabilityBand.ready) {
-        capabilityBand.averageLabel = capabilityBand.average.toFixed(2)
-      }
+      const capabilityBand = buildCapabilityBand(skillRows)
 
       return h.view('gdad/summary', {
         pageTitle: 'My GDaD evidence',

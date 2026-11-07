@@ -4,6 +4,7 @@ import { buildSessionUser } from '#/server/common/helpers/auth/user-session.js'
 import { sendMagicLinkEmail } from '#/server/common/helpers/notify.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 import { isSignInAvailable } from '#/server/common/helpers/auth/sign-in-availability.js'
+import { getLandingPath } from '#/server/common/helpers/auth/landing-path.js'
 
 const logger = createLogger()
 
@@ -24,7 +25,7 @@ export const signInRoutes = [
     path: '/sign-in',
     handler(request, h) {
       if (request.app.user) {
-        return h.redirect('/browse')
+        return h.redirect(getLandingPath(request.app.user))
       }
       if (!isSignInAvailable()) {
         return h.view('sign-in/unavailable', {
@@ -108,8 +109,9 @@ export const signInRoutes = [
         await backendApi.activatePerson(person.id)
       }
 
-      request.yar.set('user', buildSessionUser(person))
-      return h.redirect('/browse')
+      const sessionUser = buildSessionUser(person)
+      request.yar.set('user', sessionUser)
+      return h.redirect(getLandingPath(sessionUser))
     }
   },
   {

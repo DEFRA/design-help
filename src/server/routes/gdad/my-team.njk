@@ -1,0 +1,89 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-full">
+      <h1 class="govuk-heading-xl">My team</h1>
+
+      {% if gdadReviewerRole == 'hod' %}
+        <p class="govuk-body">
+          As Head of Design you see every designer, including anyone who does not have a responsible manager yet.
+        </p>
+      {% else %}
+        <p class="govuk-body">
+          These are the designers you are the responsible manager for. Open a designer to read their GDaD evidence and score it.
+        </p>
+      {% endif %}
+
+      {% if not rows.length %}
+        {% if gdadReviewerRole == 'hod' %}
+          <p class="govuk-body">No designer profiles use a GDaD job title yet.</p>
+        {% else %}
+          <p class="govuk-body">No designers are allocated to you yet.</p>
+          <p class="govuk-body">Ask the Head of Design to set you as the responsible manager for your designers.</p>
+        {% endif %}
+      {% else %}
+        {% if attentionCount %}
+          <p class="govuk-body">
+            <strong>{{ attentionCount }} {{ "designer needs" if attentionCount == 1 else "designers need" }} your attention</strong>
+            — they have evidence that has not been scored yet, or that has changed since it was scored. They are shown first.
+          </p>
+        {% endif %}
+
+        <div tabindex="0" class="gdad-table-scroll govuk-!-margin-bottom-6">
+          <table class="govuk-table">
+            <caption class="govuk-table__caption govuk-table__caption--m">Designers</caption>
+            <thead class="govuk-table__head">
+              <tr class="govuk-table__row">
+                <th scope="col" class="govuk-table__header">Name</th>
+                <th scope="col" class="govuk-table__header">Job title</th>
+                <th scope="col" class="govuk-table__header">Skills with evidence</th>
+                <th scope="col" class="govuk-table__header">Skills scored</th>
+                <th scope="col" class="govuk-table__header">Capability level</th>
+                <th scope="col" class="govuk-table__header">Last evidence update</th>
+                <th scope="col" class="govuk-table__header">Status</th>
+              </tr>
+            </thead>
+            <tbody class="govuk-table__body">
+              {% for row in rows %}
+                <tr class="govuk-table__row">
+                  <th scope="row" class="govuk-table__header">
+                    <a class="govuk-link govuk-link--no-visited-state" href="/review/gdad-evidence/{{ row.id }}">{{ row.name }}</a>
+                  </th>
+                  <td class="govuk-table__cell">{{ row.role }}</td>
+                  <td class="govuk-table__cell">{{ row.skillsWithEvidence }} of {{ skillCount }}</td>
+                  <td class="govuk-table__cell">{{ row.skillsScored }} of {{ skillCount }}</td>
+                  <td class="govuk-table__cell">
+                    {% if row.capabilityBand.ready and row.capabilityBand.band %}
+                      Level {{ row.capabilityBand.band.level }} — {{ row.capabilityBand.band.rating }}
+                    {% else %}
+                      Not yet
+                    {% endif %}
+                  </td>
+                  <td class="govuk-table__cell">{{ row.lastEvidenceLabel or "None yet" }}</td>
+                  <td class="govuk-table__cell">
+                    {% if row.needsAttention %}
+                      <strong class="govuk-tag govuk-tag--yellow">Needs your attention</strong>
+                      <span class="govuk-hint govuk-body-s govuk-!-display-block govuk-!-margin-top-1 govuk-!-margin-bottom-0">{{ row.skillsNeedingScoring }} {{ "skill" if row.skillsNeedingScoring == 1 else "skills" }} to score</span>
+                    {% elif row.skillsWithEvidence %}
+                      <span class="govuk-hint">Up to date</span>
+                    {% else %}
+                      <span class="govuk-hint">No evidence yet</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="/review/gdad-evidence/export.csv">Download scores for {{ "everyone" if gdadReviewerRole == 'hod' else "your team" }} (CSV)</a>
+      </p>
+      <p class="govuk-body-s">
+        Accessibility specialist and resource manager job titles are not shown, because they are not on the GDaD design skills path yet.
+      </p>
+    </div>
+  </div>
+{% endblock %}

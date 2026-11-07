@@ -1,0 +1,37 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-xl">Find help in the team</h1>
+
+      <p class="govuk-body-l">
+        Connect with designers in the team for coaching, mentoring, design critiques and advice.
+      </p>
+
+      <h2 class="govuk-heading-m">What do you need help with?</h2>
+
+      <p class="govuk-body">
+        Each link runs a search across team members’ profiles: their
+        <strong>can help with</strong> tags, the free text they add, and their job title.
+      </p>
+
+      <ul class="govuk-list">
+        {% for tag in shortcutTags %}
+          <li>
+            <a class="govuk-link govuk-link--no-visited-state" href="/browse?filter={{ tag | urlencode }}">
+              {{ tag }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <h2 class="govuk-heading-m govuk-!-margin-top-6">More ways to find help</h2>
+      <ul class="govuk-list">
+        <li><a class="govuk-link govuk-link--no-visited-state" href="/browse">Browse all team members</a></li>
+        <li><a class="govuk-link govuk-link--no-visited-state" href="/offers">Offers</a> — what team members say they can help with, in their own words</li>
+        <li><a class="govuk-link govuk-link--no-visited-state" href="/requests">Requests</a> — what team members would like help with, in their own words</li>
+      </ul>
+    </div>
+  </div>
+{% endblock %}

@@ -6,6 +6,7 @@ import {
   SKILLS,
   SCORE_LABELS,
   isGdadEvidenceApplicableRole,
+  getCapabilityBandFromScores,
   getExpectedBandForSkillAndRole,
   getGradedLevelForSkillScore,
   skillFrameworkUrl
@@ -26,17 +27,67 @@ export function buildSkillRows(personGdad, role) {
       row.officialScore == null || row.officialScore === ''
         ? null
         : Number(row.officialScore)
+    const evidenceText = row.evidenceText ?? ''
+    const evidenceUpdatedAt = row.evidenceUpdatedAt ?? null
+    const scoredAt = row.scoredAt ?? null
     return {
       ...meta,
       frameworkUrl: skillFrameworkUrl(meta.frameworkHash),
-      evidenceText: row.evidenceText ?? '',
-      evidenceUpdatedAt: row.evidenceUpdatedAt ?? null,
+      evidenceText,
+      evidenceUpdatedAt,
+      evidenceUpdatedLabel: formatGdadEvidenceTimestamp(evidenceUpdatedAt),
+      scoredAt,
+      needsScoring: skillNeedsScoring(evidenceText, officialScore, {
+        evidenceUpdatedAt,
+        scoredAt
+      }),
       officialScore,
       scoreLabel: officialScore ? SCORE_LABELS[officialScore] : null,
       expectedBand: getExpectedBandForSkillAndRole(meta.key, role),
       gradedLevel: getGradedLevelForSkillScore(meta.key, role, officialScore)
     }
   })
+}
+
+function toDate(value) {
+  if (!value) {
+    return null
+  }
+  const d = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/**
+ * A skill needs the reviewer's attention when it has evidence but no score,
+ * or the evidence was added or changed after it was last scored. Scores
+ * saved before score dates were recorded have no `scoredAt`; those are not
+ * flagged, because there is nothing to compare against.
+ */
+export function skillNeedsScoring(
+  evidenceText,
+  officialScore,
+  { evidenceUpdatedAt, scoredAt }
+) {
+  if (!String(evidenceText ?? '').trim()) {
+    return false
+  }
+  if (officialScore == null) {
+    return true
+  }
+  const evidenceAt = toDate(evidenceUpdatedAt)
+  const scoreAt = toDate(scoredAt)
+  return Boolean(evidenceAt && scoreAt && evidenceAt > scoreAt)
+}
+
+/** Capability level from the seven skill rows, with a display average. */
+export function buildCapabilityBand(skillRows) {
+  const band = getCapabilityBandFromScores(
+    skillRows.map((s) => s.officialScore)
+  )
+  if (band.ready) {
+    band.averageLabel = band.average.toFixed(2)
+  }
+  return band
 }
 
 export function formatGdadEvidenceTimestamp(value) {
@@ -64,7 +115,10 @@ export async function requireOwnApplicablePerson(request, h) {
   if (!isGdadEvidenceApplicableRole(person.role)) {
     return {
       response: h
-        .view('gdad/not-applicable', { pageTitle: 'GDaD evidence' })
+        .view('gdad/not-applicable', {
+          pageTitle: 'GDaD evidence',
+          personRole: person.role
+        })
         .code(403)
     }
   }
@@ -99,7 +153,8 @@ export async function requireReviewableTarget(request, h) {
         .view('gdad/not-applicable', {
           pageTitle: 'GDaD evidence',
           adminContext: true,
-          targetName: target.name
+          targetName: target.name,
+          targetRole: target.role
         })
         .code(403)
     }

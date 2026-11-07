@@ -4,16 +4,26 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
       <h1 class="govuk-heading-xl">GDaD evidence</h1>
-      <p class="govuk-body">
-        {% if adminContext %}
-          <strong>{{ targetName if targetName else 'This person' }}</strong> is in an accessibility specialist job title. The GDaD design skills framework does not yet cover those roles in Design help — this may change when national guidance is updated.
-        {% else %}
-          Your job title is in an accessibility specialist role. The GDaD design skills evidence feature applies to interaction and service design titles for now.
-        {% endif %}
-      </p>
-      <p class="govuk-body">
-        <a class="govuk-link" href="/browse">Back to team members</a>
-      </p>
+      {% if adminContext %}
+        <p class="govuk-body">
+          <strong>{{ targetName if targetName else 'This person' }}</strong>{% if targetRole %} ({{ targetRole }}){% endif %} is not in a job title covered by the GDaD design skills framework yet. This may change when national guidance is updated.
+        </p>
+        <p class="govuk-body">
+          <a class="govuk-link" href="/my-team">Back to My team</a>
+        </p>
+      {% else %}
+        <p class="govuk-body">
+          GDaD evidence is for interaction and service design job titles for now.{% if personRole %} Your job title, <strong>{{ personRole }}</strong>, is not included yet.{% endif %} This may change when national guidance is updated.
+        </p>
+        <p class="govuk-body">You can still:</p>
+        <ul class="govuk-list govuk-list--bullet">
+          <li><a class="govuk-link" href="/find-help">find help in the team</a></li>
+          <li><a class="govuk-link" href="/my-profile">view or update your profile</a></li>
+        </ul>
+        <p class="govuk-body">
+          If your job title is wrong, <a class="govuk-link" href="/my-profile/edit">change it in your profile</a>.
+        </p>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

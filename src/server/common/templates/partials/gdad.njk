@@ -1,0 +1,174 @@
+{#
+  Shared pieces of the GDaD pages. The designer's own view (/my-gdad-evidence)
+  and the manager's view of them (/review/gdad-evidence/...) are built from
+  these so both show the same skills, in the same order, with the same words
+  — a manager and designer on a call can say "the third skill down" and mean
+  the same thing. The manager's view adds scoring controls; the designer's
+  view adds evidence editing.
+#}
+
+{% macro gdadScoreText(skill) %}
+  {%- if skill.officialScore -%}
+    {{ skill.officialScore }} — {{ skill.scoreLabel }}
+  {%- else -%}
+    Not scored yet
+  {%- endif -%}
+{% endmacro %}
+
+{% macro gdadFrameworkLinks(params) %}
+  <p class="govuk-body-s govuk-!-margin-bottom-4">
+    Expected levels are for <strong>{{ params.frameworkRoleLabel }}</strong>.
+    <a class="govuk-link" href="{{ params.frameworkRolePageUrl }}" target="_blank" rel="noopener noreferrer">Designer role on the DDaT capability framework (opens in a new tab)</a>
+    · <a class="govuk-link" href="{{ params.gdadSkillsMatrixUrl }}">Local skills matrix (PNG)</a>
+  </p>
+{% endmacro %}
+
+{% macro gdadScoringExplainer() %}
+  <p class="govuk-body-s govuk-!-margin-bottom-4">
+    <strong>Official scores</strong> (1 to 3) are set by the designer’s line manager or the Head of Design. For each skill, <strong>1</strong> means one skill level below expected, <strong>2</strong> means at the expected skill level, and <strong>3</strong> means one skill level above expected.
+    The overall <strong>capability level</strong> is worked out from the <strong>best six scores</strong> across the seven skills.
+  </p>
+{% endmacro %}
+
+{% macro gdadCapabilityPanel(capabilityBand) %}
+  <div class="govuk-inset-text govuk-!-margin-bottom-6">
+    <h2 class="govuk-heading-s govuk-!-margin-bottom-2">Capability level (best 6 scores)</h2>
+    {% if capabilityBand.ready and capabilityBand.band %}
+      <p class="govuk-body govuk-!-margin-bottom-1">
+        <strong>Capability level {{ capabilityBand.band.level }} — {{ capabilityBand.band.rating }}</strong>
+      </p>
+      <p class="govuk-body-s govuk-!-margin-bottom-0">
+        Best 6 score total: <strong>{{ capabilityBand.total }}</strong> (average {{ capabilityBand.averageLabel }}), from {{ capabilityBand.scoredSkillsCount }} scored skills.
+      </p>
+    {% else %}
+      <p class="govuk-body govuk-!-margin-bottom-1">
+        Capability level not available yet.
+      </p>
+      <p class="govuk-body-s govuk-!-margin-bottom-0">
+        It needs official scores on at least <strong>6 skills</strong>. Skills scored so far: <strong>{{ capabilityBand.scoredSkillsCount }}</strong>.
+      </p>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{#
+  params.skillRows    — from buildSkillRows (always the 7 skills in framework order)
+  params.skillHref    — link prefix for each skill page; the skill key is appended
+  params.scoreControls — true on the manager's view: adds a "Change score" column
+#}
+{% macro gdadSkillsTable(params) %}
+  <div tabindex="0" class="gdad-table-scroll govuk-!-margin-bottom-6">
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-table__caption--m">Skills</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Skill</th>
+          <th scope="col" class="govuk-table__header">Evidence</th>
+          <th scope="col" class="govuk-table__header">Expected level</th>
+          <th scope="col" class="govuk-table__header">Score</th>
+          <th scope="col" class="govuk-table__header">Graded level</th>
+          {% if params.scoreControls %}
+            <th scope="col" class="govuk-table__header">Change score</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% for skill in params.skillRows %}
+          <tr class="govuk-table__row">
+            <th scope="row" class="govuk-table__header">
+              <a class="govuk-link govuk-link--no-visited-state" href="{{ params.skillHref }}{{ skill.key }}">{{ skill.label }}</a>
+            </th>
+            <td class="govuk-table__cell">
+              {% if skill.evidenceText %}
+                Added
+                {% if skill.evidenceUpdatedLabel %}
+                  <span class="govuk-hint govuk-body-s govuk-!-display-block govuk-!-margin-bottom-0">Last updated {{ skill.evidenceUpdatedLabel }}</span>
+                {% endif %}
+              {% else %}
+                None yet
+              {% endif %}
+            </td>
+            <td class="govuk-table__cell">
+              <strong class="govuk-tag {{ skill.expectedBand.tagClass }}">{{ skill.expectedBand.label }}</strong>
+            </td>
+            <td class="govuk-table__cell">
+              {{ gdadScoreText(skill) }}
+              {% if skill.needsScoring and skill.officialScore %}
+                <strong class="govuk-tag govuk-tag--yellow govuk-!-display-block govuk-!-margin-top-1 gdad-tag-fit">Evidence changed since scored</strong>
+              {% endif %}
+            </td>
+            <td class="govuk-table__cell">
+              {% if skill.gradedLevel %}
+                <strong class="govuk-tag {{ skill.gradedLevel.tagClass }}">{{ skill.gradedLevel.label }}</strong>
+              {% else %}
+                <span class="govuk-hint">&mdash;</span>
+              {% endif %}
+            </td>
+            {% if params.scoreControls %}
+              <td class="govuk-table__cell">
+                <label class="govuk-visually-hidden" for="score-{{ skill.key }}">Score for {{ skill.label }}</label>
+                <select class="govuk-select" id="score-{{ skill.key }}" name="score_{{ skill.key }}" {% if params.disabled %}disabled{% endif %}>
+                  <option value="" {% if not skill.officialScore %}selected{% endif %}>Not set</option>
+                  <option value="1" {% if skill.officialScore == 1 %}selected{% endif %}>1 — Below standard</option>
+                  <option value="2" {% if skill.officialScore == 2 %}selected{% endif %}>2 — At standard</option>
+                  <option value="3" {% if skill.officialScore == 3 %}selected{% endif %}>3 — Above standard</option>
+                </select>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+
+{# Top of each per-skill page: framework links, expected standard and where the skill stands. #}
+{% macro gdadSkillDetail(params) %}
+  {% set skill = params.skill %}
+  <p class="govuk-body">
+    <a class="govuk-link" href="{{ skill.frameworkUrl }}" target="_blank" rel="noopener noreferrer">Full skill description on the DDaT framework (opens in a new tab)</a>
+    · <a class="govuk-link" href="{{ params.frameworkRolePageUrl }}" target="_blank" rel="noopener noreferrer">Designer role — {{ params.frameworkRoleLabel }} (opens in a new tab)</a>
+    · <a class="govuk-link" href="{{ params.gdadSkillsMatrixUrl }}">Local skills matrix (PNG)</a>
+  </p>
+
+  <div class="govuk-inset-text">
+    <p class="govuk-body govuk-!-margin-bottom-2">
+      <strong>Expected level for this skill ({{ params.frameworkRoleLabel }}):</strong>
+      <strong class="govuk-tag {{ skill.expectedBand.tagClass }}">{{ skill.expectedBand.label }}</strong>
+    </p>
+    <p class="govuk-body-s govuk-!-margin-bottom-0">{{ skill.expectedBand.description }}</p>
+  </div>
+
+  <dl class="govuk-summary-list govuk-!-margin-bottom-6">
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Evidence</dt>
+      <dd class="govuk-summary-list__value">
+        {% if skill.evidenceText %}
+          Added{% if skill.evidenceUpdatedLabel %} — last updated {{ skill.evidenceUpdatedLabel }}{% endif %}
+        {% else %}
+          None yet
+        {% endif %}
+      </dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Score</dt>
+      <dd class="govuk-summary-list__value">
+        {{ gdadScoreText(skill) }}
+        {% if skill.needsScoring and skill.officialScore %}
+          <strong class="govuk-tag govuk-tag--yellow govuk-!-margin-left-1">Evidence changed since scored</strong>
+        {% endif %}
+      </dd>
+    </div>
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">Graded level</dt>
+      <dd class="govuk-summary-list__value">
+        {% if skill.gradedLevel %}
+          <strong class="govuk-tag {{ skill.gradedLevel.tagClass }}">{{ skill.gradedLevel.label }}</strong>
+          <span class="govuk-visually-hidden">. {{ skill.gradedLevel.summary }}</span>
+        {% else %}
+          &mdash;
+        {% endif %}
+      </dd>
+    </div>
+  </dl>
+{% endmacro %}

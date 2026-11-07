@@ -5,3 +5,8 @@
 .gdad-table-scroll {
   overflow-x: auto;
 }
+
+// A tag on its own line that stays as wide as its text
+.gdad-tag-fit {
+  width: fit-content;
+}

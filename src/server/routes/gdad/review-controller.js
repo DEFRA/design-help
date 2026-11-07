@@ -19,6 +19,7 @@ import {
   buildAdminExportCsv
 } from '#/server/common/helpers/gdad/csv.js'
 import {
+  buildCapabilityBand,
   buildSkillRows,
   formatGdadEvidenceTimestamp,
   requireReviewableTarget
@@ -31,42 +32,47 @@ function byName(a, b) {
 }
 
 /**
- * Review-index bucket stats, mirroring the prototype: only skills with
- * non-empty evidence count towards either total.
+ * One My team row: progress across the seven skills, capability level and
+ * whether anything is waiting for the reviewer.
  */
-function buildReviewRow(person) {
-  const gdad = person.gdad ?? {}
-  let skillsWithEvidence = 0
-  let skillsScored = 0
+export function buildTeamRow(person) {
+  const skillRows = buildSkillRows(person.gdad, person.role)
   let lastEvidenceAt = null
-  for (const skill of SKILLS) {
-    const row = gdad[skill.key]
-    if (!String(row?.evidenceText ?? '').trim()) {
+  for (const skill of skillRows) {
+    if (!String(skill.evidenceText).trim() || !skill.evidenceUpdatedAt) {
       continue
     }
-    skillsWithEvidence += 1
-    if (row.officialScore != null) {
-      skillsScored += 1
-    }
-    const updatedAt = row.evidenceUpdatedAt
-      ? new Date(row.evidenceUpdatedAt)
-      : null
+    const updatedAt = new Date(skill.evidenceUpdatedAt)
     if (
-      updatedAt &&
       !Number.isNaN(updatedAt.getTime()) &&
       (!lastEvidenceAt || updatedAt > lastEvidenceAt)
     ) {
       lastEvidenceAt = updatedAt
     }
   }
+  const skillsNeedingScoring = skillRows.filter((s) => s.needsScoring).length
   return {
     id: person.id,
     name: person.name,
     role: person.role,
-    skillsWithEvidence,
-    skillsScored,
-    lastEvidenceLabel: formatGdadEvidenceTimestamp(lastEvidenceAt)
+    skillsWithEvidence: skillRows.filter((s) => String(s.evidenceText).trim())
+      .length,
+    skillsScored: skillRows.filter((s) => s.officialScore != null).length,
+    capabilityBand: buildCapabilityBand(skillRows),
+    lastEvidenceLabel: formatGdadEvidenceTimestamp(lastEvidenceAt),
+    skillsNeedingScoring,
+    needsAttention: skillsNeedingScoring > 0
   }
+}
+
+/** Needs-attention first, then by name. */
+export function sortTeamRows(rows) {
+  return [...rows].sort((a, b) => {
+    if (a.needsAttention !== b.needsAttention) {
+      return a.needsAttention ? -1 : 1
+    }
+    return byName(a, b)
+  })
 }
 
 async function listEligiblePeople(user) {
@@ -82,7 +88,7 @@ function targetViewContext(target) {
     targetName: target.name,
     targetRole: target.role,
     gdadSkillsMatrixUrl: GDAD_SKILLS_MATRIX_URL,
-    roleExamplesUrl: roleFrameworkPageUrl(target.role),
+    frameworkRolePageUrl: roleFrameworkPageUrl(target.role),
     frameworkRoleLabel: getFrameworkRolePageLabel(target.role),
     // View and edit scope are identical in the port (see gdad/access.js)
     canEditScores: true
@@ -113,7 +119,7 @@ function parseScorePayload(payload) {
 export const gdadReviewRoutes = [
   {
     method: 'GET',
-    path: '/review/gdad-evidence',
+    path: '/my-team',
     async handler(request, h) {
       const user = request.app.user
       if (!canAccessGdadReviewSection(user)) {
@@ -122,24 +128,25 @@ export const gdadReviewRoutes = [
         )
       }
 
-      const rows = (await listEligiblePeople(user)).map(buildReviewRow)
+      const rows = sortTeamRows(
+        (await listEligiblePeople(user)).map(buildTeamRow)
+      )
 
-      return h.view('gdad/review-index', {
-        pageTitle: 'Review GDaD evidence',
-        rowsNoOrIncompleteEvidence: rows.filter(
-          (row) => row.skillsWithEvidence < SKILLS.length
-        ),
-        rowsEvidenceUnscored: rows.filter(
-          (row) =>
-            row.skillsWithEvidence >= SKILLS.length &&
-            row.skillsScored < SKILLS.length
-        ),
-        rowsScoredEvidence: rows.filter(
-          (row) => row.skillsScored >= SKILLS.length
-        ),
+      return h.view('gdad/my-team', {
+        pageTitle: 'My team',
+        rows,
+        attentionCount: rows.filter((row) => row.needsAttention).length,
         skillCount: SKILLS.length,
         gdadReviewerRole: getGdadReviewerRole(user)
       })
+    }
+  },
+  {
+    // The old review list now lives at My team
+    method: 'GET',
+    path: '/review/gdad-evidence',
+    handler(_request, h) {
+      return h.redirect('/my-team')
     }
   },
   {
@@ -181,9 +188,11 @@ export const gdadReviewRoutes = [
         return response
       }
 
+      const skillRows = buildSkillRows(target.gdad, target.role)
       return h.view('gdad/review-person', {
         pageTitle: `GDaD evidence — ${target.name}`,
-        skillRows: buildSkillRows(target.gdad, target.role),
+        skillRows,
+        capabilityBand: buildCapabilityBand(skillRows),
         ...targetViewContext(target),
         justSaved: request.query.saved === '1',
         error:

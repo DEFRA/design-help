@@ -61,24 +61,22 @@ describe('context and cache', () => {
           getAssetPath: expect.any(Function),
           navigation: [
             {
-              current: true,
-              text: 'Design help',
-              href: '/'
+              current: false,
+              ariaCurrent: null,
+              text: 'GDaD',
+              href: '/my-gdad-evidence'
             },
             {
               current: false,
-              text: 'Team members',
-              href: '/browse'
+              ariaCurrent: null,
+              text: 'Find help',
+              href: '/find-help'
             },
             {
               current: false,
-              text: 'Offers',
-              href: '/offers'
-            },
-            {
-              current: false,
-              text: 'Requests',
-              href: '/requests'
+              ariaCurrent: null,
+              text: 'My profile',
+              href: '/my-profile'
             }
           ],
           serviceName: 'Defra DDTS Design help',
@@ -168,24 +166,22 @@ describe('context and cache', () => {
           getAssetPath: expect.any(Function),
           navigation: [
             {
-              current: true,
-              text: 'Design help',
-              href: '/'
+              current: false,
+              ariaCurrent: null,
+              text: 'GDaD',
+              href: '/my-gdad-evidence'
             },
             {
               current: false,
-              text: 'Team members',
-              href: '/browse'
+              ariaCurrent: null,
+              text: 'Find help',
+              href: '/find-help'
             },
             {
               current: false,
-              text: 'Offers',
-              href: '/offers'
-            },
-            {
-              current: false,
-              text: 'Requests',
-              href: '/requests'
+              ariaCurrent: null,
+              text: 'My profile',
+              href: '/my-profile'
             }
           ],
           serviceName: 'Defra DDTS Design help',

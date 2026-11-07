@@ -163,11 +163,8 @@ describe('#gdadReviewRoutes access', () => {
   ]
 
   describe('Non-admin line manager', () => {
-    test('Sees only their own report on the review list', async () => {
-      const { statusCode, result } = await get(
-        users.manager,
-        '/review/gdad-evidence'
-      )
+    test('Sees only their own report on My team', async () => {
+      const { statusCode, result } = await get(users.manager, '/my-team')
       expect(statusCode).toBe(statusCodes.ok)
       expect(result).toContain('Ada Own-Report')
       expect(result).not.toContain('Bea Other-Report')
@@ -175,9 +172,9 @@ describe('#gdadReviewRoutes access', () => {
       expect(result).not.toContain('Manager Themselves')
     })
 
-    test('Gets the team link in the header but not the Admin link', async () => {
-      const { result } = await get(users.manager, '/review/gdad-evidence')
-      expect(result).toContain("My team's GDaD evidence")
+    test('Gets My team in the menu but not the Admin link', async () => {
+      const { result } = await get(users.manager, '/my-team')
+      expect(result).toMatch(/href="\/my-team" aria-current="page"/)
       expect(result).not.toContain('href="/admin/users"')
     })
 
@@ -233,7 +230,7 @@ describe('#gdadReviewRoutes access', () => {
   describe('Admin who is not Head of Design or a line manager', () => {
     test('Is refused on every review route', async () => {
       for (const url of [
-        '/review/gdad-evidence',
+        '/my-team',
         '/review/gdad-evidence/export.csv',
         personUrl(ids.unallocated),
         skillUrl(ids.unallocated)
@@ -248,7 +245,7 @@ describe('#gdadReviewRoutes access', () => {
   describe('Non-manager non-admin', () => {
     test('Is refused on every review route', async () => {
       for (const url of [
-        '/review/gdad-evidence',
+        '/my-team',
         '/review/gdad-evidence/export.csv',
         personUrl(ids.ownReport)
       ]) {
@@ -261,10 +258,7 @@ describe('#gdadReviewRoutes access', () => {
 
   describe('Head of Design', () => {
     test('Sees everyone, including unallocated designers', async () => {
-      const { statusCode, result } = await get(
-        users.hod,
-        '/review/gdad-evidence'
-      )
+      const { statusCode, result } = await get(users.hod, '/my-team')
       expect(statusCode).toBe(statusCodes.ok)
       expect(result).toContain('Ada Own-Report')
       expect(result).toContain('Bea Other-Report')
@@ -296,17 +290,13 @@ describe('#gdadReviewRoutes access', () => {
   })
 
   describe('Admin who is also a line manager', () => {
-    test('Sees only their own report, with the Admin menu', async () => {
-      const { statusCode, result } = await get(
-        users.adminManager,
-        '/review/gdad-evidence'
-      )
+    test('Sees only their own report, with the Admin link', async () => {
+      const { statusCode, result } = await get(users.adminManager, '/my-team')
       expect(statusCode).toBe(statusCodes.ok)
       expect(result).toContain('Dee Admin-Managers-Report')
       expect(result).not.toContain('Ada Own-Report')
       expect(result).not.toContain('Cy Unallocated')
       expect(result).toContain('href="/admin/users"')
-      expect(result).toContain('aria-label="Admin tools"')
     })
 
     test('May open their own report only', async () => {
@@ -358,6 +348,188 @@ describe('#gdadReviewRoutes access', () => {
       expect(savedId).toBe(id)
       expect(scores.design_communication).toBe(2)
       expect(reviewerId).toBe(users[who].id)
+    })
+  })
+
+  describe('Old review list address', () => {
+    test('Redirects to My team', async () => {
+      const { statusCode, headers } = await get(
+        users.manager,
+        '/review/gdad-evidence'
+      )
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/my-team')
+    })
+  })
+
+  describe('My team page', () => {
+    const earlier = '2026-10-01T09:00:00.000Z'
+    const later = '2026-10-20T09:00:00.000Z'
+    const team = (gdadByName) =>
+      Object.entries(gdadByName).map(([name, gdad], i) => ({
+        id: `c0000000000000000000000${i}`,
+        name,
+        role: 'Interaction Designer',
+        managerId: ids.manager,
+        gdad
+      }))
+
+    function rowFor(result, name) {
+      const start = result.indexOf(name)
+      return result.slice(start, result.indexOf('</tr>', start))
+    }
+
+    test('Shows an empty state when no designers are allocated', async () => {
+      mockState.people = []
+      const { statusCode, result } = await get(users.manager, '/my-team')
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toContain('No designers are allocated to you yet.')
+      expect(result).toContain('href="/review/gdad-evidence/export.csv"')
+    })
+
+    test('Flags evidence with no score, and evidence changed since scored', async () => {
+      mockState.people = team({
+        'Ann Unscored': {
+          design_communication: {
+            evidenceText: 'Some evidence',
+            evidenceUpdatedAt: earlier
+          }
+        },
+        'Ben Changed': {
+          design_communication: {
+            evidenceText: 'Some evidence',
+            evidenceUpdatedAt: later,
+            officialScore: 2,
+            scoredAt: earlier
+          }
+        },
+        'Cat Scored': {
+          design_communication: {
+            evidenceText: 'Some evidence',
+            evidenceUpdatedAt: earlier,
+            officialScore: 2,
+            scoredAt: later
+          }
+        },
+        'Dan Nothing': {}
+      })
+      const { result } = await get(users.manager, '/my-team')
+      expect(rowFor(result, 'Ann Unscored')).toContain('Needs your attention')
+      expect(rowFor(result, 'Ben Changed')).toContain('Needs your attention')
+      expect(rowFor(result, 'Cat Scored')).not.toContain('Needs your attention')
+      expect(rowFor(result, 'Cat Scored')).toContain('Up to date')
+      expect(rowFor(result, 'Dan Nothing')).not.toContain(
+        'Needs your attention'
+      )
+      expect(rowFor(result, 'Cat Scored')).toContain('1 of 7')
+    })
+
+    test('Lists people needing attention first, then by name', async () => {
+      mockState.people = team({
+        'Aaron Fine': {},
+        'Zoe Waiting': {
+          design_communication: {
+            evidenceText: 'Some evidence',
+            evidenceUpdatedAt: earlier
+          }
+        },
+        'Mo Fine': {}
+      })
+      const { result } = await get(users.manager, '/my-team')
+      const order = ['Zoe Waiting', 'Aaron Fine', 'Mo Fine'].map((name) =>
+        result.indexOf(name)
+      )
+      expect(order).toEqual([...order].sort((a, b) => a - b))
+    })
+
+    test('Shows the capability level once six skills are scored', async () => {
+      const keys = [
+        'design_communication',
+        'designing_for_everyone',
+        'designing_strategically',
+        'designing_together',
+        'evidence_based_design',
+        'iterative_design',
+        'leading_design'
+      ]
+      const gdad = Object.fromEntries(
+        keys.slice(0, 6).map((key) => [key, { officialScore: 2 }])
+      )
+      mockState.people = team({ 'Eve Banded': gdad, 'Fin Unbanded': {} })
+      const { result } = await get(users.manager, '/my-team')
+      expect(rowFor(result, 'Eve Banded')).toMatch(/Level \d — /)
+      expect(rowFor(result, 'Eve Banded')).toContain('6 of 7')
+      expect(rowFor(result, 'Fin Unbanded')).toContain('Not yet')
+    })
+  })
+
+  describe('Designer and manager views match', () => {
+    const designerPerson = {
+      id: ids.designer,
+      name: 'Gil Designer',
+      role: 'Interaction Designer',
+      managerId: ids.manager,
+      gdad: {
+        design_communication: {
+          evidenceText: 'Some evidence',
+          evidenceUpdatedAt: '2026-10-01T09:00:00.000Z',
+          officialScore: 2,
+          scoredAt: '2026-10-02T09:00:00.000Z'
+        }
+      }
+    }
+
+    function tableHeadings(html) {
+      return [...html.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map(
+        (m) => m[1].trim()
+      )
+    }
+    function skillLabels(html) {
+      return [
+        ...html.matchAll(/<th scope="row"[^>]*>\s*<a[^>]*>([^<]+)</g)
+      ].map((m) => m[1].trim())
+    }
+    function capabilityPanel(html) {
+      const start = html.indexOf('Capability level (best 6 scores)')
+      return html.slice(start, html.indexOf('</div>', start))
+    }
+
+    test('Summary pages share skills, order, headings and capability wording', async () => {
+      mockState.people = [...people, designerPerson]
+      const designerView = (await get(users.designer, '/my-gdad-evidence'))
+        .result
+      const managerView = (await get(users.manager, personUrl(ids.designer)))
+        .result
+
+      expect(skillLabels(designerView)).toHaveLength(7)
+      expect(skillLabels(managerView)).toEqual(skillLabels(designerView))
+      // The manager's view only adds the score control column
+      expect(tableHeadings(managerView)).toEqual([
+        ...tableHeadings(designerView),
+        'Change score'
+      ])
+      expect(capabilityPanel(managerView)).toEqual(
+        capabilityPanel(designerView)
+      )
+      expect(managerView).toContain('name="score_design_communication"')
+      expect(designerView).not.toContain('name="score_design_communication"')
+    })
+
+    test('Skill pages share the same skill detail', async () => {
+      mockState.people = [...people, designerPerson]
+      const detail = (html) => {
+        const start = html.indexOf('<h1')
+        return html.slice(start, html.indexOf('Evidence (STAR)', start))
+      }
+      const designerView = (
+        await get(users.designer, '/my-gdad-evidence/design_communication')
+      ).result
+      const managerView = (await get(users.manager, skillUrl(ids.designer)))
+        .result
+      expect(detail(designerView)).toContain('2 — At standard')
+      expect(detail(managerView)).toEqual(detail(designerView))
+      expect(designerView).toContain('name="evidence_design_communication"')
+      expect(managerView).not.toContain('name="evidence_design_communication"')
     })
   })
 })

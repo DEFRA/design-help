@@ -52,22 +52,22 @@
             <ul class="govuk-service-navigation__list">
               {% for item in navigation %}
                 <li class="govuk-service-navigation__item {{ 'govuk-service-navigation__item--active' if item.current }}">
-                  <a class="govuk-service-navigation__link" href="{{ item.href }}">{{ item.text }}</a>
+                  <a class="govuk-service-navigation__link" href="{{ item.href }}"{% if item.ariaCurrent %} aria-current="{{ item.ariaCurrent }}"{% endif %}>
+                    {%- if item.current -%}
+                      <strong class="govuk-service-navigation__active-fallback">{{ item.text }}</strong>
+                    {%- else -%}
+                      {{ item.text }}
+                    {%- endif -%}
+                  </a>
                 </li>
               {% endfor %}
             </ul>
           </nav>
           <div class="design-help-nav__account">
-            {% if gdadReviewerRole == 'line_manager' %}
-              <a class="govuk-link govuk-link--no-visited-state" href="/review/gdad-evidence">My team's GDaD evidence</a>
-            {% endif %}
             {% if isAdmin %}
               <a class="govuk-link govuk-link--no-visited-state" href="/admin/users">Admin</a>
             {% endif %}
             <div class="design-help-nav__account-group">
-              <div class="design-help-nav__account-stack">
-                <a class="govuk-link govuk-link--no-visited-state" href="/my-profile">My profile</a>
-              </div>
               <form method="post" action="/sign-out" class="design-help-nav__signout-form">
                 <input type="hidden" name="crumb" value="{{ crumb }}">
                 <button type="submit" class="design-help-nav__signout-button govuk-link govuk-link--no-visited-state">Sign out</button>
