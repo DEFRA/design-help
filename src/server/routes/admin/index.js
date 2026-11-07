@@ -2,6 +2,7 @@ import { usersRoutes } from './users-controller.js'
 import { profileRoutes } from './profile-controller.js'
 import { managersRoutes } from './managers-controller.js'
 import { teamMemberRoutes } from './team-member-controller.js'
+import { invitesRoutes } from './invites-controller.js'
 
 export const admin = {
   plugin: {
@@ -11,7 +12,8 @@ export const admin = {
         ...usersRoutes,
         ...profileRoutes,
         ...managersRoutes,
-        ...teamMemberRoutes
+        ...teamMemberRoutes,
+        ...invitesRoutes
       ])
     }
   }

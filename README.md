@@ -88,6 +88,7 @@ Non-secret config lives in `cdp-app-config` per environment; secrets in the CDP 
 | `NOTIFY_FEEDBACK_TEMPLATE_ID`   | config     | Notify template with `((service_name))`, `((feedback_details))`, `((page_path))`, `((contact_email))`, `((signed_in_as))` |
 | `FEEDBACK_INBOX_EMAIL`          | config     | Inbox that receives service feedback                                                                                      |
 | `MAGIC_LINK_TTL`                | config     | Sign-in link TTL in ms (default 15 minutes)                                                                               |
+| `INVITE_LINK_TTL`               | config     | Invite link TTL in ms, for invites sent from Admin (default 7 days)                                                       |
 | `NOTIFY_API_KEY`                | **secret** | GOV.UK Notify API key                                                                                                     |
 | `SESSION_COOKIE_PASSWORD`       | **secret** | At least 32 characters                                                                                                    |
 

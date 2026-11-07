@@ -246,6 +246,12 @@ export const config = convict({
       format: Number,
       default: 900000,
       env: 'MAGIC_LINK_TTL'
+    },
+    inviteLinkTtl: {
+      doc: 'Invite sign-in link (sent by an admin) time to live in milliseconds. Longer than an ordinary sign-in link because people may not open the invite straight away.',
+      format: Number,
+      default: 7 * 24 * 60 * 60 * 1000,
+      env: 'INVITE_LINK_TTL'
     }
   },
   notify: {

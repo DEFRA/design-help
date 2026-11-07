@@ -12,6 +12,8 @@ import {
   isAcceptableAdminEmail,
   normaliseEmailInput
 } from './helpers.js'
+import { INVITE_RESULT_FLASH } from './invites-controller.js'
+import { isInvitable } from './invites.js'
 
 /** Success banner after the Head of Design sets up or changes someone. */
 function teamMemberSavedBanner(query, people, user) {
@@ -52,11 +54,20 @@ export const usersRoutes = [
         request.app.user
       )
 
+      const [inviteResult] = request.yar.flash(INVITE_RESULT_FLASH)
+      const invitablePeople = people.filter(isInvitable)
+      const invitableIds = new Set(invitablePeople.map((person) => person.id))
+
       return h.view('admin/users', {
         pageTitle: 'Admin',
-        rows,
+        rows: rows.map((row) => ({
+          ...row,
+          canInvite: invitableIds.has(row.id)
+        })),
         adminMsg,
-        savedBanner
+        savedBanner,
+        inviteResult: inviteResult ?? null,
+        pendingInviteCount: invitablePeople.length
       })
     }
   },

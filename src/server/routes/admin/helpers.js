@@ -60,7 +60,10 @@ const ADMIN_MESSAGES = {
   'admin-not-listed':
     'That person must be on the allowed list or have a registered account before you grant admin access.',
   'admin-already': 'That person already has admin access.',
-  'admin-no-email': 'No email address for that person.'
+  'admin-no-email': 'No email address for that person.',
+  'invite-not-pending':
+    'No invite was sent. That person has already signed in, or is no longer on the list.',
+  'invite-none-pending': 'Nobody is pending, so no invites were sent.'
 }
 
 const ADMIN_SUCCESS_CODES = new Set(['admin-granted', 'admin-revoked'])

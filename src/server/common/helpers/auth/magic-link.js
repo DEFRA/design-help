@@ -10,9 +10,18 @@ function hashToken(token) {
 
 export function createMagicLinkStore(cache) {
   return {
-    async issue(email) {
+    /**
+     * `ttl` (milliseconds) overrides the cache's default expiry for this one
+     * token — admin invites use a longer life than ordinary sign-in links.
+     * Both catbox-memory and catbox-redis honour a per-item TTL.
+     */
+    async issue(email, { ttl } = {}) {
       const token = randomBytes(32).toString('hex')
-      await cache.set(hashToken(token), { email })
+      if (ttl) {
+        await cache.set(hashToken(token), { email }, ttl)
+      } else {
+        await cache.set(hashToken(token), { email })
+      }
       return token
     },
     async consume(token) {

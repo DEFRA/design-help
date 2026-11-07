@@ -1,0 +1,36 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <a href="/admin/users" class="govuk-back-link">Back to People and access</a>
+
+      {% if count > 0 %}
+        <h1 class="govuk-heading-xl">Invite everyone who’s pending?</h1>
+        <p class="govuk-body">
+          You’re about to email {{ count }} {{ "person" if count == 1 else "people" }} a link to sign in to Design Help. Each link works once and lasts {{ inviteLinkLifetime }}.
+        </p>
+        <ul class="govuk-list govuk-list--bullet">
+          {% for person in people %}
+            <li>
+              {% if person.name %}{{ person.name }} ({{ person.email }}){% else %}{{ person.email }}{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="/admin/users/invite-pending" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          <div class="govuk-button-group">
+            <button type="submit" class="govuk-button" data-module="govuk-button">Send invites</button>
+            <a class="govuk-link govuk-link--no-visited-state" href="/admin/users">Cancel</a>
+          </div>
+        </form>
+      {% else %}
+        <h1 class="govuk-heading-xl">Nobody is pending</h1>
+        <p class="govuk-body">Everyone on the list has already signed in, so there is nobody to invite.</p>
+        <p class="govuk-body">
+          <a class="govuk-link" href="/admin/users">Back to People and access</a>
+        </p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

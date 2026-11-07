@@ -12,6 +12,14 @@
         {{ govukNotificationBanner({ type: "success", text: savedBanner }) }}
       {% endif %}
 
+      {% if inviteResult %}
+        {% if inviteResult.isSuccess %}
+          {{ govukNotificationBanner({ type: "success", text: inviteResult.text }) }}
+        {% else %}
+          {{ govukNotificationBanner({ titleText: "Some invites were not sent", text: inviteResult.text }) }}
+        {% endif %}
+      {% endif %}
+
       {% if adminMsg %}
         {% if adminMsg.isSuccess %}
           {{ govukNotificationBanner({ type: "success", text: adminMsg.text }) }}
@@ -49,6 +57,15 @@
         </div>
         <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Add person</button>
       </form>
+
+      {% if pendingInviteCount > 0 %}
+        <p class="govuk-body govuk-!-margin-bottom-2">
+          People marked <strong>Pending</strong> are on the list but have not signed in yet. You can email them a sign-in link.
+        </p>
+        <p class="govuk-body">
+          <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/admin/users/invite-pending">Invite everyone who’s pending ({{ pendingInviteCount }})</a>
+        </p>
+      {% endif %}
 
       {% if rows and rows.length > 0 %}
         <table class="govuk-table govuk-!-margin-bottom-8">
@@ -90,6 +107,12 @@
                 </td>
                 <td class="govuk-table__cell">
                   <div class="design-help-admin-users-actions">
+                    {% if row.canInvite %}
+                      <form method="post" action="/admin/users/{{ row.id }}/invite">
+                        <input type="hidden" name="crumb" value="{{ crumb }}">
+                        <button type="submit" class="govuk-button" data-module="govuk-button">Send invite<span class="govuk-visually-hidden"> to {{ row.name or row.email }}</span></button>
+                      </form>
+                    {% endif %}
                     {% if user.isHeadOfDesignSuperUser and row.email and row.canManageAdminAccess %}
                       {% if row.isAdmin %}
                         <form method="post" action="/admin/users/revoke-admin">

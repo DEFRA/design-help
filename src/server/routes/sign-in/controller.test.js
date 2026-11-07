@@ -1,6 +1,8 @@
 import { vi } from 'vitest'
 
 import { createServer } from '#/server/server.js'
+import { config } from '#/config/config.js'
+import { sendMagicLinkEmail } from '#/server/common/helpers/notify.js'
 
 /*
  * Where people land after signing in. The sign-in link, the session and the
@@ -31,6 +33,11 @@ vi.mock('#/server/common/helpers/backend-api.js', () => ({
     activatePerson: vi.fn()
   }
 }))
+
+vi.mock('#/server/common/helpers/notify.js', async (importOriginal) => {
+  const original = await importOriginal()
+  return { ...original, sendMagicLinkEmail: vi.fn(async () => {}) }
+})
 
 function person(flags = {}) {
   return {
@@ -106,4 +113,29 @@ describe('#signInRoutes landing', () => {
       expect(headers.location).toBe(location)
     }
   )
+
+  test('An ordinary sign-in link uses the short sign-in time, not the invite time', async () => {
+    mockState.person = person()
+    const issue = vi
+      .spyOn(server.magicLinks, 'issue')
+      .mockResolvedValue('a'.repeat(64))
+    vi.mocked(sendMagicLinkEmail).mockClear()
+
+    const { statusCode, headers } = await server.inject({
+      method: 'POST',
+      url: '/sign-in',
+      headers: { cookie: 'crumb=test-crumb' },
+      payload: { crumb: 'test-crumb', email: 'someone@example.test' }
+    })
+
+    expect(statusCode).toBe(302)
+    expect(headers.location).toBe('/sign-in/check-email')
+    expect(issue).toHaveBeenCalledWith('someone@example.test')
+    expect(config.get('auth.magicLinkTtl')).toBe(15 * 60 * 1000)
+    expect(sendMagicLinkEmail).toHaveBeenCalledWith(
+      'someone@example.test',
+      `${config.get('appBaseUrl')}/sign-in/verify?token=${'a'.repeat(64)}`
+    )
+    issue.mockRestore()
+  })
 })
