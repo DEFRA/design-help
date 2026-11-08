@@ -781,7 +781,7 @@ describe('#teamMemberRoutes', () => {
         `/admin/team-member/${ids.bootstrap}`
       )
       expect(result).toContain(
-        'Admin access: Yes (protected — set in configuration)'
+        'Admin access: Yes. This is set by the service team and can’t be changed here.'
       )
       expect(result).not.toContain('name="isAdmin"')
 
@@ -805,7 +805,10 @@ describe('#teamMemberRoutes', () => {
 
     test('Head of Design cannot remove their own admin access', async () => {
       const { result } = await get(users.hod, `/admin/team-member/${ids.hod}`)
-      expect(result).toContain('you cannot remove your own admin access')
+      expect(result).toContain(
+        'Admin access: Yes. You’re the Head of Design, so this can’t be turned off.'
+      )
+      expect(result).not.toContain('set by the service team')
       expect(result).not.toContain('name="isAdmin"')
 
       const { statusCode } = await post(
@@ -845,6 +848,9 @@ describe('#teamMemberRoutes', () => {
       )
       expect(result).toContain(`href="/admin/users/${ids.report}/edit"`)
       expect(result).toContain('Edit their Find help profile')
+      const linkAt = result.indexOf('Edit their Find help profile')
+      expect(linkAt).toBeLessThan(result.indexOf('id="name"'))
+      expect(linkAt).toBeLessThan(result.indexOf('Save changes'))
     })
 
     test('Not shown for an email-only entry', async () => {

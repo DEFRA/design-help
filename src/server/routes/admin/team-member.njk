@@ -22,6 +22,12 @@
         {% endif %}
       </p>
 
+      {% if profileHref %}
+        <p class="govuk-body">
+          <a class="govuk-link" href="{{ profileHref }}">Edit their Find help profile</a>
+        </p>
+      {% endif %}
+
       {% if duplicateChangeHref %}
         <p class="govuk-body">
           <a class="govuk-link" href="{{ duplicateChangeHref }}">Change the details of the person who already has this email address</a>
@@ -133,10 +139,10 @@
           {% else %}
             <h2 class="govuk-heading-m">Admin access</h2>
             <p class="govuk-body" id="admin-access-readonly">
-              {% if adminAccess.reason == "protected" %}
-                Admin access: Yes (protected — set in configuration)
-              {% elif adminAccess.reason == "self" %}
-                Admin access: {{ "Yes" if adminAccess.isAdmin else "No" }} (you cannot remove your own admin access)
+              {% if adminAccess.reason == "self" %}
+                Admin access: Yes. You’re the Head of Design, so this can’t be turned off.
+              {% elif adminAccess.reason == "protected" %}
+                Admin access: Yes. This is set by the service team and can’t be changed here.
               {% else %}
                 Admin access: {{ "Yes" if adminAccess.isAdmin else "No" }}
               {% endif %}
@@ -157,12 +163,6 @@
           <a class="govuk-link" href="/admin/users">Cancel</a>
         </div>
       </form>
-
-      {% if profileHref %}
-        <p class="govuk-body">
-          <a class="govuk-link" href="{{ profileHref }}">Edit their Find help profile</a>
-        </p>
-      {% endif %}
     </div>
   </div>
 {% endblock %}

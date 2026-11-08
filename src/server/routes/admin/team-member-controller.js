@@ -116,18 +116,19 @@ function formFromPerson(person) {
 
 /**
  * Whether the admin access question can be answered for this person, and if
- * not, why. People made admin in service configuration are protected, and
- * the Head of Design cannot remove their own admin access.
+ * not, why. The Head of Design cannot remove their own admin access, and
+ * people made admin in service configuration are protected.
  */
 export function adminAccessFor(existing, user) {
   if (!existing) {
     return { canChange: false, reason: null }
   }
-  if (existing.email && isBootstrapAdminEmail(existing.email)) {
-    return { canChange: false, reason: 'protected' }
-  }
+  // Own record first: that wording wins if they are also a configured admin.
   if (existing.id === user?.id) {
     return { canChange: false, reason: 'self' }
+  }
+  if (existing.email && isBootstrapAdminEmail(existing.email)) {
+    return { canChange: false, reason: 'protected' }
   }
   return { canChange: Boolean(existing.email), reason: null }
 }
