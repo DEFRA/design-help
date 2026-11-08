@@ -104,23 +104,139 @@ function hasNulCharacter(text) {
   return text.includes(NUL_CHAR)
 }
 
+/** The Unicode replacement character a failed decode leaves behind. */
+export const REPLACEMENT_CHARACTER = '\uFFFD'
+
 /**
- * Some spreadsheet exports use UTF-16LE; a UTF-8 decode of those leaves
- * many NUL characters, so fall back when they appear.
+ * Thrown when an upload is not UTF-8 or UTF-16 and we cannot tell for sure
+ * which older encoding it uses. The route asks the designer to save as
+ * “CSV UTF-8” rather than guess and garble their evidence.
  */
-export function decodeCsvBuffer(buffer) {
-  let csvText = buffer.toString('utf8')
-  if (hasNulCharacter(csvText)) {
-    csvText = buffer.toString('utf16le')
+export class CsvEncodingError extends Error {
+  constructor(message = 'csv_encoding_unknown') {
+    super(message)
+    this.name = 'CsvEncodingError'
   }
-  return csvText
+}
+
+/*
+ * Excel's plain “CSV” on Windows saves Windows-1252 and older Excel for Mac
+ * saves Mac Roman. The same byte means different characters in each, so we
+ * decode both ways and score the results: typographic punctuation and £
+ * are what designers really type; lowercase accents are plausible;
+ * capital accents and common symbols are neutral; anything else (control
+ * characters, maths symbols, ligatures) means that reading is wrong.
+ */
+const LEGACY_ENCODINGS = ['windows-1252', 'macintosh']
+const LIKELY_CHARACTERS = new Set('’‘“”–—•…£€')
+const NEUTRAL_CHARACTERS = new Set('\u00A0°©®™½¼¾·×÷«»¢§¶¡¿´¨')
+
+function scoreLegacyCharacter(ch) {
+  if (LIKELY_CHARACTERS.has(ch)) {
+    return 3
+  }
+  if (/^[\u00DF-\u00FF]$/.test(ch) && ch !== '÷') {
+    return 1
+  }
+  if (/^[\u00C0-\u00DE]$/.test(ch) || NEUTRAL_CHARACTERS.has(ch)) {
+    return 0
+  }
+  return null
+}
+
+function scoreLegacyDecoding(text) {
+  let score = 0
+  let unlikely = 0
+  for (const ch of text) {
+    if (ch.charCodeAt(0) < 0x80) {
+      continue
+    }
+    const value = scoreLegacyCharacter(ch)
+    if (value === null) {
+      unlikely += 1
+    } else {
+      score += value
+    }
+  }
+  return { score, unlikely }
 }
 
 /**
- * Decodes an uploaded CSV part. Hapi's in-memory multipart parsing gives a
- * string for `text/*` parts (already UTF-8 decoded, NULs preserved) and a
- * Buffer for binary content types — accept either. Anything else (for
- * example the `{}` an empty part produces) returns null.
+ * A file that is mostly UTF-8 but has a stray invalid byte (for example
+ * text pasted together from two places) would come out as â€™-style
+ * gibberish if read as an older encoding, so refuse it instead.
+ */
+function hasValidUtf8Punctuation(buffer) {
+  for (const ch of buffer.toString('utf8')) {
+    if (
+      ch !== REPLACEMENT_CHARACTER &&
+      ch.charCodeAt(0) >= 0x80 &&
+      scoreLegacyCharacter(ch) !== null
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+function decodeLegacyBuffer(buffer) {
+  if (hasValidUtf8Punctuation(buffer)) {
+    throw new CsvEncodingError()
+  }
+  const candidates = LEGACY_ENCODINGS.map((encoding) => {
+    const text = new TextDecoder(encoding).decode(buffer)
+    return { text, ...scoreLegacyDecoding(text) }
+  }).sort((a, b) => a.unlikely - b.unlikely || b.score - a.score)
+
+  const [best, next] = candidates
+  const confident =
+    best.unlikely === 0 &&
+    (best.text === next.text || next.unlikely > 0 || best.score > next.score)
+  if (!confident) {
+    throw new CsvEncodingError()
+  }
+  return best.text
+}
+
+function stripBom(text) {
+  return text.startsWith('\uFEFF') ? text.slice(1) : text
+}
+
+/**
+ * Turns the uploaded bytes into text: UTF-8 (with or without a BOM),
+ * UTF-16 (Excel “Unicode Text”) and the older single-byte encodings Excel
+ * uses for plain “CSV”. Throws CsvEncodingError when it cannot tell which
+ * encoding the file uses.
+ */
+export function decodeCsvBuffer(buffer) {
+  if (buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return stripBom(new TextDecoder('utf-16le').decode(buffer))
+  }
+  if (buffer[0] === 0xfe && buffer[1] === 0xff) {
+    return stripBom(new TextDecoder('utf-16be').decode(buffer))
+  }
+  if (buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+    return new TextDecoder('utf-8').decode(buffer)
+  }
+
+  // UTF-16 without a BOM: a UTF-8 read leaves NULs between the letters
+  const asUtf8 = buffer.toString('utf8')
+  if (hasNulCharacter(asUtf8)) {
+    return buffer.toString('utf16le')
+  }
+
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer)
+  } catch {
+    return decodeLegacyBuffer(buffer)
+  }
+}
+
+/**
+ * Decodes an uploaded CSV part. The route reads the raw bytes (a Buffer)
+ * so the encoding can be detected; a string is accepted too and assumed
+ * to be already decoded. Anything else (for example the `{}` an empty
+ * part produces) returns null.
  */
 export function decodeCsvUpload(value) {
   if (Buffer.isBuffer(value)) {
@@ -134,26 +250,48 @@ export function decodeCsvUpload(value) {
   return null
 }
 
+function firstLineOf(value) {
+  return (
+    String(value ?? '')
+      .replace(/\uFEFF/g, '')
+      .split(/\r\n|\r|\n/)
+      .map((s) => s.trim())
+      .find(Boolean) ?? ''
+  )
+}
+
 /**
- * Parses a filled-in template CSV to `{ evidenceBySkill, importedSkillKeys }`.
- * Columns 1–4 (Situation/Task/Action/Result) are joined into STAR evidence
- * text; the SCORES column is ignored; unmatched rows are silently skipped
- * and a later duplicate skill row overwrites an earlier one.
+ * Parses a filled-in template CSV. Columns 1–4 (Situation/Task/Action/
+ * Result) are joined into STAR evidence text; the SCORES column is
+ * ignored. Returns:
+ *
+ * - `evidenceBySkill` / `importedSkillKeys` — only skills whose row has
+ *   some evidence. Blank rows are left out so they never clear evidence
+ *   already saved. A later duplicate row with evidence overwrites an
+ *   earlier one.
+ * - `matchedSkillKeys` — every skill named in the file, blank or not.
+ * - `unrecognisedRows` — `{ rowNumber, skillText }` for rows that have
+ *   evidence but no recognised skill name (row numbers as a spreadsheet
+ *   shows them). The first row is treated as the header when it does not
+ *   name a skill.
  */
 export function parseGdadTemplateCsv(csvText) {
   const rows = parseRowsWithDelimiterFallback(csvText)
 
   const evidenceBySkill = {}
   const importedSkillKeys = new Set()
+  const matchedSkillKeys = new Set()
+  const unrecognisedRows = []
+  let seenFirstRow = false
 
-  for (const row of rows) {
-    if (!Array.isArray(row) || row.length < 5) {
-      continue
+  rows.forEach((row, index) => {
+    if (!Array.isArray(row) || row.every((cell) => !sanitiseField(cell))) {
+      return
     }
-
-    const skillKey = resolveSkillKey(row[0])
-    if (!skillKey) {
-      continue
+    const isFirstRow = !seenFirstRow
+    seenFirstRow = true
+    if (row.length < 5) {
+      return
     }
 
     const situation = sanitiseField(row[1])
@@ -162,13 +300,29 @@ export function parseGdadTemplateCsv(csvText) {
     const result = sanitiseField(row[4])
     const evidence = buildStarEvidence(situation, task, action, result)
 
-    evidenceBySkill[skillKey] = evidence
-    importedSkillKeys.add(skillKey)
-  }
+    const skillKey = resolveSkillKey(row[0])
+    if (!skillKey) {
+      if (evidence && !isFirstRow) {
+        unrecognisedRows.push({
+          rowNumber: index + 1,
+          skillText: firstLineOf(row[0])
+        })
+      }
+      return
+    }
+
+    matchedSkillKeys.add(skillKey)
+    if (evidence) {
+      evidenceBySkill[skillKey] = evidence
+      importedSkillKeys.add(skillKey)
+    }
+  })
 
   return {
     evidenceBySkill,
-    importedSkillKeys: Array.from(importedSkillKeys)
+    importedSkillKeys: Array.from(importedSkillKeys),
+    matchedSkillKeys: Array.from(matchedSkillKeys),
+    unrecognisedRows
   }
 }
 
@@ -201,7 +355,11 @@ function buildTemplateSkillCell(skill, role, gradeLabel) {
   ].join('\n\n')
 }
 
-/** Blank STAR template CSV for a grade, or null for an unknown grade. */
+/**
+ * Blank STAR template CSV for a grade, or null for an unknown grade. It
+ * starts with a UTF-8 byte order mark so Excel for Windows shows the curly
+ * quotes in the guidance text correctly.
+ */
 export function buildGradeTemplateCsv(gradeKey) {
   const cfg = TEMPLATE_GRADE_CONFIG[gradeKey]
   if (!cfg) {
@@ -214,7 +372,7 @@ export function buildGradeTemplateCsv(gradeKey) {
     const row = [skillCell, '', '', '', '', 0].map(csvEscape).join(',')
     lines.push(row)
   }
-  return lines.join('\n')
+  return `\uFEFF${lines.join('\n')}`
 }
 
 export const EXPORT_COLUMNS = [

@@ -1,6 +1,8 @@
 import { parse } from 'csv-parse/sync'
 
 import {
+  CsvEncodingError,
+  REPLACEMENT_CHARACTER,
   buildAdminExportCsv,
   buildGradeTemplateCsv,
   decodeCsvUpload,
@@ -34,9 +36,10 @@ function importFile(value) {
   return parseGdadTemplateCsv(decodeCsvUpload(value).trim())
 }
 
+/** Exactly the skills in `evidenceSet` were imported, word for word. */
 function expectAllSkillsExact(result, evidenceSet) {
   expect(result.importedSkillKeys.sort()).toEqual(
-    SKILLS.map((s) => s.key).sort()
+    Object.keys(evidenceSet).sort()
   )
   for (const [key, parts] of Object.entries(evidenceSet)) {
     expect(result.evidenceBySkill[key]).toBe(expectedEvidence(parts))
@@ -102,9 +105,10 @@ describe('GDaD CSV import — designer journey', () => {
       )
     })
 
-    // BUG: browsers send a .csv as text/csv, so hapi decodes it as UTF-8
-    // before our UTF-16 fallback sees it — £, curly quotes and emoji are
-    // already destroyed. Low impact: Excel saves this format as .txt.
+    // Once Excel “Unicode Text” has been decoded as UTF-8 text, £, curly
+    // quotes and emoji are already destroyed and cannot be recovered. The
+    // upload route now reads the raw bytes so this no longer happens
+    // there (see the route tests); this pins the string-only helper.
     it.fails(
       'Excel “Unicode Text” keeps £ and curly quotes when sent as text/csv',
       () => {
@@ -115,33 +119,45 @@ describe('GDaD CSV import — designer journey', () => {
       }
     )
 
+    // Excel's plain “CSV (Comma delimited)” and older Mac “Comma
+    // Separated Values” are not UTF-8: the encoding is detected and
+    // converted so punctuation survives
     test.each(['g7-excel-windows-1252.csv', 'g7-excel-mac-roman.csv'])(
-      'Plain “CSV” %s still finds all seven skills',
-      (name) => {
-        const result = importFile(readFixture(name))
-        expect(result.importedSkillKeys).toHaveLength(SKILLS.length)
-      }
-    )
-
-    test('Plain “CSV” from Excel for Windows currently turns ’ “ ” £ é – — • into �', () => {
-      // Documents the current (broken) behaviour so it is visible in the
-      // test output. Delete this when the encoding bug is fixed.
-      const result = importFile(readFixture('g7-excel-windows-1252.csv'))
-      expect(result.evidenceBySkill.design_communication).toContain('�')
-      expect(result.evidenceBySkill.design_communication).not.toContain('£')
-    })
-
-    // BUG (high): Excel's plain “CSV (Comma delimited)” and older Mac
-    // “Comma Separated Values” are not UTF-8. Every curly apostrophe,
-    // quote mark, £, accent, dash and bullet is silently replaced with �
-    // and saved over the designer's evidence.
-    it.fails.each(['g7-excel-windows-1252.csv', 'g7-excel-mac-roman.csv'])(
       'Plain “CSV” %s keeps ’ “ ” £ é – — • exactly',
       (name) => {
         const result = importFile(readFixture(name))
         expectAllSkillsExact(result, LEGACY_SAFE_EVIDENCE)
+        expect(result.evidenceBySkill.design_communication).not.toContain(
+          REPLACEMENT_CHARACTER
+        )
       }
     )
+
+    test('Plain “CSV” with only plain letters and £ reads the same either way', () => {
+      const csv = encodeWindows1252('Iterative design,Saved £5,t,a,r,0')
+      expect(importFile(csv).evidenceBySkill.iterative_design).toBe(
+        'Situation: Saved £5\n\nTask: t\n\nAction: a\n\nResult: r'
+      )
+    })
+
+    test('Refuses a file whose encoding cannot be worked out', () => {
+      // 0x81 is unused in Windows-1252 and ≈ (0xC5) is not evidence text
+      // in Mac Roman, so neither reading is safe
+      const bytes = Buffer.from([
+        ...Buffer.from('Iterative design,a'),
+        0x81,
+        0xc5,
+        ...Buffer.from('b,t,a,r,0')
+      ])
+      expect(() => decodeCsvUpload(bytes)).toThrow(CsvEncodingError)
+    })
+
+    test('Reads UTF-16 big-endian files with a BOM', () => {
+      const text = 'Leading design,“s” £1,t,a,r,0'
+      const le = Buffer.from(`\uFEFF${text}`, 'utf16le')
+      const be = Buffer.from(le).swap16()
+      expect(decodeCsvUpload(be)).toBe(text)
+    })
 
     test('The fixture encoders really produce non-UTF-8 bytes', () => {
       expect([...encodeWindows1252('’£')]).toEqual([0x92, 0xa3])
@@ -213,31 +229,29 @@ describe('GDaD CSV import — designer journey', () => {
   })
 
   describe('Partial and odd files', () => {
-    test('Blank skill rows are currently imported as empty evidence', () => {
-      // Documents current behaviour: the route then saves '' for these
-      // skills, which CLEARS any evidence already saved. See the route
-      // tests for the overwrite bug.
+    // A template where the designer only filled in some rows only
+    // imports those rows, so blank rows never clear saved evidence
+    test('Only imports skills that have some evidence filled in', () => {
       const csv = toCsv(
         fillTemplate('g7', {
           iterative_design: UNICODE_EVIDENCE.iterative_design
         })
       )
-      const { evidenceBySkill, importedSkillKeys } = importFile(csv)
-      expect(importedSkillKeys).toHaveLength(SKILLS.length)
-      expect(evidenceBySkill.leading_design).toBe('')
-    })
-
-    // BUG (high): a template where the designer only filled in some rows
-    // should only import those rows.
-    it.fails('Only imports skills that have some evidence filled in', () => {
-      const csv = toCsv(
-        fillTemplate('g7', {
-          iterative_design: UNICODE_EVIDENCE.iterative_design
-        })
-      )
-      const { evidenceBySkill, importedSkillKeys } = importFile(csv)
+      const { evidenceBySkill, importedSkillKeys, matchedSkillKeys } =
+        importFile(csv)
       expect(importedSkillKeys).toEqual(['iterative_design'])
       expect(evidenceBySkill).not.toHaveProperty('leading_design')
+      // The blank rows were still recognised as skills
+      expect(matchedSkillKeys).toHaveLength(SKILLS.length)
+    })
+
+    test('A blank later duplicate row does not wipe an earlier filled one', () => {
+      const csv = ['Iterative design,s,t,a,r,0', 'Iterative design,,,,,0'].join(
+        '\n'
+      )
+      expect(importFile(csv).evidenceBySkill.iterative_design).toBe(
+        'Situation: s\n\nTask: t\n\nAction: a\n\nResult: r'
+      )
     })
 
     test('Imports with the header row deleted', () => {
@@ -287,13 +301,29 @@ describe('GDaD CSV import — designer journey', () => {
       expectAllSkillsExact(importFile(toCsv(rows)), UNICODE_EVIDENCE)
     })
 
-    test('Silently skips a row whose SKILL cell was cleared, even if it has evidence', () => {
-      const rows = fillTemplate('g7', UNICODE_EVIDENCE).map((row) =>
-        skillKeyOf(row) === 'leading_design' ? ['', ...row.slice(1)] : row
-      )
-      const { importedSkillKeys } = importFile(toCsv(rows))
+    test('Reports a row whose SKILL cell was cleared or mistyped but has evidence', () => {
+      const rows = fillTemplate('g7', UNICODE_EVIDENCE).map((row) => {
+        if (skillKeyOf(row) === 'leading_design') {
+          return ['', ...row.slice(1)]
+        }
+        if (skillKeyOf(row) === 'design_communication') {
+          return ['Desing comms\n\nmore text', ...row.slice(1)]
+        }
+        return row
+      })
+      const { importedSkillKeys, unrecognisedRows } = importFile(toCsv(rows))
       expect(importedSkillKeys).not.toContain('leading_design')
-      expect(importedSkillKeys).toHaveLength(SKILLS.length - 1)
+      expect(importedSkillKeys).toHaveLength(SKILLS.length - 2)
+      expect(unrecognisedRows).toEqual([
+        { rowNumber: 2, skillText: 'Desing comms' },
+        { rowNumber: 8, skillText: '' }
+      ])
+    })
+
+    test('Does not report the header row or blank unmatched rows', () => {
+      const rows = fillTemplate('g7', UNICODE_EVIDENCE)
+      const csv = toCsv([...rows, ['Spare row', '', '', '', '', '0']])
+      expect(importFile(csv).unrecognisedRows).toEqual([])
     })
 
     test('A SKILL cell naming two skills goes to the first one in the list', () => {
@@ -399,7 +429,8 @@ describe('GDaD CSV import — designer journey', () => {
       '%s template lists every skill once, with blank STAR columns',
       (grade) => {
         const rows = parse(buildGradeTemplateCsv(grade), {
-          relax_column_count: true
+          relax_column_count: true,
+          bom: true
         })
         const keys = rows.slice(1).map(skillKeyOf)
         expect(keys.sort()).toEqual([...allSkillKeys].sort())
@@ -409,13 +440,20 @@ describe('GDaD CSV import — designer journey', () => {
       }
     )
 
-    // BUG (low): the template contains curly quotes (“working”) but has
-    // no UTF-8 marker, so Excel for Windows shows them as â€œworkingâ€.
-    it.fails(
-      'Starts with a UTF-8 marker (BOM) so Excel shows “ ” correctly',
-      () => {
-        expect(buildGradeTemplateCsv('g7').startsWith('﻿')).toBe(true)
+    // The template contains curly quotes (“working”); without a UTF-8
+    // marker Excel for Windows shows them as â€œworkingâ€
+    test.each(Object.keys(TEMPLATE_GRADE_CONFIG))(
+      '%s template starts with a UTF-8 marker (BOM) so Excel shows “ ” correctly',
+      (grade) => {
+        expect(buildGradeTemplateCsv(grade).startsWith('\uFEFF')).toBe(true)
       }
     )
+
+    test('The downloaded template, BOM and all, imports straight back', () => {
+      const result = importFile(Buffer.from(buildGradeTemplateCsv('g6')))
+      expect(result.matchedSkillKeys.sort()).toEqual([...allSkillKeys].sort())
+      expect(result.importedSkillKeys).toEqual([])
+      expect(result.unrecognisedRows).toEqual([])
+    })
   })
 })

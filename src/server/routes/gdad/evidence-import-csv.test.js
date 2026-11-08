@@ -5,6 +5,7 @@ import { statusCodes } from '#/server/common/constants/status-codes.js'
 import { backendApi } from '#/server/common/helpers/backend-api.js'
 import { SKILLS } from '#/server/common/helpers/gdad/constants.js'
 import {
+  LEGACY_SAFE_EVIDENCE,
   UNICODE_EVIDENCE,
   expectedEvidence,
   fillTemplate,
@@ -15,8 +16,7 @@ import {
 /*
  * Route-level checks of the "Import GDaD evidence from CSV" page. The
  * signed-in user and the backend are both faked, so no live data is
- * touched. Tests marked `it.fails` describe how it SHOULD behave and
- * currently doesn't (known bugs).
+ * touched.
  */
 const mockState = { user: null, people: [] }
 
@@ -355,7 +355,55 @@ describe('#gdadEvidenceRoutes CSV import', () => {
       const { statusCode, result } = await get('/my-gdad-evidence?imported=7')
       expect(statusCode).toBe(statusCodes.ok)
       expect(result).toContain('govuk-notification-banner--success')
-      expect(result).toContain('Imported evidence for 7 skill(s).')
+      expect(result).toContain('Imported evidence for 7 skills.')
+    })
+
+    test('Says “1 skill” rather than “1 skills”', async () => {
+      const { result } = await get('/my-gdad-evidence?imported=1')
+      expect(result).toContain('Imported evidence for 1 skill.')
+    })
+
+    test('Says plainly when nothing changed', async () => {
+      const { result } = await get('/my-gdad-evidence?imported=0')
+      expect(result).not.toContain('govuk-notification-banner--success')
+      expect(result).toContain('No evidence was changed.')
+    })
+
+    test('Shows no banner without an import, or with a nonsense count', async () => {
+      for (const url of ['/my-gdad-evidence', '/my-gdad-evidence?imported=x']) {
+        const { result } = await get(url)
+        expect(result).not.toContain('Imported evidence for')
+        expect(result).not.toContain('No evidence was changed')
+      }
+    })
+
+    test.each([
+      ['Windows Excel plain CSV', 'g7-excel-windows-1252.csv'],
+      ['older Mac Excel plain CSV', 'g7-excel-mac-roman.csv']
+    ])(
+      'Converts %s so ’ “ ” £ é – — • are saved exactly',
+      async (_tool, fixture) => {
+        const { headers } = await upload({ file: readFixture(fixture) })
+        expect(headers.location).toBe('/my-gdad-evidence?imported=2')
+        const [, evidence] = savedEvidence()
+        expect(Object.keys(evidence).sort()).toEqual(
+          Object.keys(LEGACY_SAFE_EVIDENCE).sort()
+        )
+        for (const [key, parts] of Object.entries(LEGACY_SAFE_EVIDENCE)) {
+          expect(evidence[key]).toBe(expectedEvidence(parts))
+        }
+      }
+    )
+
+    test('Reads Excel “Unicode Text” exactly even when sent as text/csv', async () => {
+      await upload({
+        file: readFixture('g7-excel-unicode-text.csv'),
+        contentType: 'text/csv'
+      })
+      const [, evidence] = savedEvidence()
+      for (const [key, parts] of Object.entries(UNICODE_EVIDENCE)) {
+        expect(evidence[key]).toBe(expectedEvidence(parts))
+      }
     })
 
     test('Never touches scores: only evidence is sent to the backend', async () => {
@@ -375,41 +423,37 @@ describe('#gdadEvidenceRoutes CSV import', () => {
   })
 
   describe('Partly filled-in template (the overwrite risk)', () => {
-    test('Currently sends blank text for every unfilled skill, which clears saved evidence', async () => {
-      // Documents current behaviour. The backend turns '' into "no
-      // evidence", so the Leading design evidence this designer saved on
-      // the website is wiped. Delete this test when the bug is fixed.
-      const { headers } = await upload({ file: partialTemplate() })
-      const [, evidence] = savedEvidence()
-      expect(evidence.leading_design).toBe('')
-      expect(Object.keys(evidence)).toHaveLength(7)
-      expect(headers.location).toBe('/my-gdad-evidence?imported=7')
-    })
-
-    // BUG (critical): uploading a template with only some rows filled in
-    // must not wipe evidence already saved for the other skills.
-    it.fails('Leaves skills with blank rows alone', async () => {
+    // The backend treats blank evidence as "delete", so blank rows must
+    // never be sent: the Leading design evidence this designer saved on
+    // the website has to survive
+    test('Leaves skills with blank rows alone', async () => {
       await upload({ file: partialTemplate() })
       const [, evidence] = savedEvidence()
       expect(Object.keys(evidence).sort()).toEqual([
         'design_communication',
         'iterative_design'
       ])
+      expect(evidence).not.toHaveProperty('leading_design')
     })
 
-    // BUG (medium): the success message counts blank rows as imported.
-    it.fails(
-      'Counts only the skills that had evidence in the file',
-      async () => {
-        const { headers } = await upload({ file: partialTemplate() })
-        expect(headers.location).toBe('/my-gdad-evidence?imported=2')
-      }
-    )
+    test('Counts only the skills that had evidence in the file', async () => {
+      const { headers } = await upload({ file: partialTemplate() })
+      expect(headers.location).toBe('/my-gdad-evidence?imported=2')
+    })
 
-    // BUG (medium): uploading the same file again re-saves identical
-    // evidence; the backend stamps it as "changed", so already-scored
-    // skills get flagged to the reviewer as needing re-scoring.
-    it.fails('Does not re-save evidence that has not changed', async () => {
+    test('A blank template saves nothing and says there is no evidence', async () => {
+      const { statusCode, result } = await upload({
+        file: toCsv(fillTemplate('g7', {}))
+      })
+      expect(statusCode).toBe(statusCodes.badRequest)
+      expect(result).toContain('The selected file has no evidence in it')
+      expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
+    })
+
+    // The backend stamps every skill it is sent as "changed", so
+    // re-sending identical evidence would flag scored skills for
+    // re-scoring
+    test('Does not re-save evidence that has not changed', async () => {
       mockState.people[0].gdad = Object.fromEntries(
         Object.entries(UNICODE_EVIDENCE).map(([key, parts]) => [
           key,
@@ -420,24 +464,53 @@ describe('#gdadEvidenceRoutes CSV import', () => {
           }
         ])
       )
-      await upload({ file: fullTemplate() })
+      const { headers } = await upload({ file: fullTemplate() })
       const calls = backendApi.saveGdadEvidence.mock.calls
       const sentKeys = calls.flatMap(([, evidence]) => Object.keys(evidence))
       expect(sentKeys).toEqual([])
+      expect(headers.location).toBe('/my-gdad-evidence?imported=0')
     })
 
-    // BUG (medium): a row whose SKILL cell was cleared or mistyped is
-    // dropped without a word; the designer is told the import worked.
-    it.fails(
-      'Warns about rows with evidence but no recognised skill',
-      async () => {
-        const rows = fillTemplate('g7', UNICODE_EVIDENCE)
-        rows[1] = ['Desing comms', ...rows[1].slice(1)]
-        const { statusCode, result } = await upload({ file: toCsv(rows) })
-        expect(statusCode).toBe(statusCodes.badRequest)
-        expect(result).toContain('Desing comms')
+    test('Sends only the skills whose evidence changed', async () => {
+      mockState.people[0].gdad = {
+        // Same text, saved from the website with Windows line breaks
+        design_communication: {
+          evidenceText: expectedEvidence(
+            UNICODE_EVIDENCE.design_communication
+          ).replace(/\n/g, '\r\n'),
+          officialScore: 2,
+          scoredAt: SCORED_AT
+        },
+        iterative_design: {
+          evidenceText: 'Situation: an older version',
+          officialScore: 2,
+          scoredAt: SCORED_AT
+        }
       }
-    )
+      const { headers } = await upload({ file: partialTemplate() })
+      const [, evidence] = savedEvidence()
+      expect(Object.keys(evidence)).toEqual(['iterative_design'])
+      expect(headers.location).toBe('/my-gdad-evidence?imported=1')
+    })
+
+    test('Refuses rows with evidence but no recognised skill, naming them', async () => {
+      const rows = fillTemplate('g7', UNICODE_EVIDENCE)
+      rows[1] = ['Desing comms', ...rows[1].slice(1)]
+      const { statusCode, result } = await upload({ file: toCsv(rows) })
+      expect(statusCode).toBe(statusCodes.badRequest)
+      expect(result).toContain('There is a problem')
+      expect(result).toContain('row 2 (“Desing comms”)')
+      expect(result).toContain('Nothing has been saved')
+      expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
+    })
+
+    test('Escapes the skill text it repeats back', async () => {
+      const rows = fillTemplate('g7', UNICODE_EVIDENCE)
+      rows[1] = ['<script>alert(1)</script>', ...rows[1].slice(1)]
+      const { result } = await upload({ file: toCsv(rows) })
+      expect(result).not.toContain('<script>alert(1)</script>')
+      expect(result).toContain('&lt;script&gt;')
+    })
   })
 
   describe('Problems the designer is told about', () => {
@@ -458,12 +531,28 @@ describe('#gdadEvidenceRoutes CSV import', () => {
       )
     })
 
-    test('An empty file is currently reported as "Choose a CSV file"', async () => {
-      await expectError({ file: '' }, 'Choose a CSV file to upload.')
+    test('A file of only spaces and blank lines', async () => {
+      await expectError({ file: '  \r\n\r\n  ' }, 'The selected file is empty')
     })
 
-    test('A file of only spaces and blank lines', async () => {
-      await expectError({ file: '  \r\n\r\n  ' }, 'The uploaded CSV is empty.')
+    test('A file whose encoding cannot be worked out', async () => {
+      const file = Buffer.from([
+        ...Buffer.from('Iterative design,a'),
+        0x81,
+        0xc5,
+        ...Buffer.from('b,t,a,r,0')
+      ])
+      await expectError(
+        { file },
+        'Save your spreadsheet as CSV UTF-8 and upload it again'
+      )
+    })
+
+    test('A file that already contains the � replacement character', async () => {
+      await expectError(
+        { file: 'Iterative design,broken � text,t,a,r,0' },
+        'Save your spreadsheet as CSV UTF-8 and upload it again'
+      )
     })
 
     test('A file with only blank rows and commas', async () => {
@@ -507,7 +596,10 @@ describe('#gdadEvidenceRoutes CSV import', () => {
           design_communication: { situation: 'x'.repeat(12000) }
         })
       )
-      await expectError({ file }, 'is too long (max 12000 characters)')
+      await expectError(
+        { file },
+        'Evidence for Design communication is too long. It must be 12,000 characters or fewer'
+      )
     })
 
     test('Evidence of exactly 12,000 characters (labels included) is accepted', async () => {
@@ -520,9 +612,7 @@ describe('#gdadEvidenceRoutes CSV import', () => {
       expect(savedEvidence()[1].iterative_design).toHaveLength(12000)
     })
 
-    // BUG (low): the message shows the internal key, e.g.
-    // "design_communication", rather than "Design communication".
-    it.fails('Names the over-long skill in plain English', async () => {
+    test('Names the over-long skill in plain English', async () => {
       const file = toCsv(
         fillTemplate('g7', {
           design_communication: { situation: 'x'.repeat(12000) }
@@ -533,24 +623,36 @@ describe('#gdadEvidenceRoutes CSV import', () => {
       expect(result).not.toContain('design_communication is too long')
     })
 
-    test('A file over 2 MB gets an error page and saves nothing', async () => {
+    test('A file over 2 MB is sent back to the form with a message and saves nothing', async () => {
       const big = 'z'.repeat(2.1 * 1024 * 1024)
-      const { statusCode, result } = await upload({
+      const { statusCode, headers } = await upload({
         file: toCsv(
           fillTemplate('g7', { iterative_design: { situation: big } })
         )
       })
-      expect(statusCode).toBe(413)
-      // The generic error page, not the import form with a message
-      expect(result).toContain('Something went wrong')
-      expect(result).not.toContain('Import GDaD evidence from CSV')
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe(`${IMPORT_URL}?error=file-too-large`)
       expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
+
+      const page = await get(headers.location)
+      expect(page.statusCode).toBe(statusCodes.badRequest)
+      expect(page.result).toContain('There is a problem')
+      expect(page.result).toContain(
+        'The selected file must be smaller than 2MB'
+      )
+      expect(page.result).toContain('href="#evidenceCsv"')
     })
 
-    // BUG (low): GOV.UK error pattern not fully followed — the summary
-    // should link to the file input, the field should show the error
-    // message itself, and the page title should start with "Error:".
-    it.fails('Follows the GOV.UK error message pattern', async () => {
+    test('The too-large message still needs a signed-in designer', async () => {
+      mockState.user = null
+      const { statusCode, headers } = await get(
+        `${IMPORT_URL}?error=file-too-large`
+      )
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/sign-in')
+    })
+
+    test('Follows the GOV.UK error message pattern', async () => {
       const result = await expectError(
         { file: readFixture('scores-export.csv') },
         'Could not find any matching skills'
@@ -561,9 +663,7 @@ describe('#gdadEvidenceRoutes CSV import', () => {
       expect(result).toMatch(/<title>\s*Error:/)
     })
 
-    // BUG (low): GOV.UK wording for an empty file is "The selected file
-    // is empty"; today it says "Choose a CSV file to upload."
-    it.fails('Says the selected file is empty when it is', async () => {
+    test('Says the selected file is empty when it is', async () => {
       await expectError({ file: '' }, 'The selected file is empty')
     })
   })

@@ -1,6 +1,7 @@
 import { parse } from 'csv-parse/sync'
 
 import {
+  CsvEncodingError,
   buildAdminExportCsv,
   buildGradeTemplateCsv,
   decodeCsvBuffer,
@@ -23,6 +24,29 @@ describe('#parseGdadTemplateCsv', () => {
     expect(evidenceBySkill.iterative_design).toBe(
       'Situation: my situation\n\nTask: my task\n\nAction: my action\n\nResult: my result'
     )
+  })
+
+  test('Should report unmatched rows that have evidence, but not the header', () => {
+    const csv = [
+      'SKILL,SITUATION,TASK,ACTION,RESULT,SCORES',
+      'Iterative design,my situation,my task,my action,my result,0',
+      'Not a real skill,a,b,c,d,0'
+    ].join('\n')
+
+    expect(parseGdadTemplateCsv(csv).unrecognisedRows).toEqual([
+      { rowNumber: 3, skillText: 'Not a real skill' }
+    ])
+  })
+
+  test('Should leave out skills whose row is blank', () => {
+    const csv = ['Iterative design,s,,,,0', 'Leading design,,,,,0'].join('\n')
+
+    const { evidenceBySkill, importedSkillKeys, matchedSkillKeys } =
+      parseGdadTemplateCsv(csv)
+
+    expect(importedSkillKeys).toEqual(['iterative_design'])
+    expect(evidenceBySkill).toEqual({ iterative_design: 'Situation: s' })
+    expect(matchedSkillKeys).toEqual(['iterative_design', 'leading_design'])
   })
 
   test('Should omit blank STAR parts and ignore the SCORES column', () => {
@@ -106,6 +130,38 @@ describe('#decodeCsvBuffer', () => {
   })
 })
 
+describe('#decodeCsvBuffer older encodings', () => {
+  test('Should read Windows-1252 punctuation', () => {
+    const bytes = Buffer.from([0x93, 0x61, 0x94, 0x20, 0xa3, 0x31, 0x96])
+    expect(decodeCsvBuffer(bytes)).toBe('“a” £1–')
+  })
+
+  test('Should read Mac Roman punctuation', () => {
+    const bytes = Buffer.from([0xd2, 0x61, 0xd3, 0x20, 0xa3, 0x31, 0xd0])
+    expect(decodeCsvBuffer(bytes)).toBe('“a” £1–')
+  })
+
+  test('Should refuse bytes it cannot read confidently', () => {
+    expect(() => decodeCsvBuffer(Buffer.from([0x61, 0x81, 0xc5]))).toThrow(
+      CsvEncodingError
+    )
+  })
+
+  test('Should refuse mostly-UTF-8 text with a stray invalid byte', () => {
+    const bytes = Buffer.concat([
+      Buffer.from('It’s £5 ', 'utf8'),
+      Buffer.from([0x92])
+    ])
+    expect(() => decodeCsvBuffer(bytes)).toThrow(CsvEncodingError)
+  })
+
+  test('Should still import a file that starts with a UTF-8 BOM', () => {
+    const bytes = Buffer.from('\uFEFFIterative design,s,t,a,r,0', 'utf8')
+    const { importedSkillKeys } = parseGdadTemplateCsv(decodeCsvBuffer(bytes))
+    expect(importedSkillKeys).toEqual(['iterative_design'])
+  })
+})
+
 describe('#decodeCsvUpload', () => {
   test('Should pass through a plain uploaded string', () => {
     const text = 'Iterative design,s,t,a,r,0'
@@ -139,7 +195,7 @@ describe('#buildGradeTemplateCsv', () => {
 
   test('Should build the header and one packed row per skill', () => {
     const csv = buildGradeTemplateCsv('g6')
-    const rows = parse(csv, { relax_column_count: true })
+    const rows = parse(csv, { relax_column_count: true, bom: true })
 
     expect(rows[0]).toEqual([
       'SKILL',
@@ -169,12 +225,14 @@ describe('#buildGradeTemplateCsv', () => {
 
   test('Should map grades to the expected roles and bands', () => {
     const seoRows = parse(buildGradeTemplateCsv('seo'), {
-      relax_column_count: true
+      relax_column_count: true,
+      bom: true
     })
     expect(seoRows[1][0]).toContain('WORKING (SEO)')
 
     const g7Rows = parse(buildGradeTemplateCsv('g7'), {
-      relax_column_count: true
+      relax_column_count: true,
+      bom: true
     })
     expect(g7Rows[1][0]).toContain('PRACTITIONER (G7)')
     // Leading design stays Working at G7
@@ -186,7 +244,8 @@ describe('#buildGradeTemplateCsv', () => {
 
   test('Should round-trip: a filled-in template imports every skill', () => {
     const rows = parse(buildGradeTemplateCsv('g6'), {
-      relax_column_count: true
+      relax_column_count: true,
+      bom: true
     })
     const filled = rows
       .slice(1)

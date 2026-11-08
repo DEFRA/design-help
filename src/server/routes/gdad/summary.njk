@@ -7,10 +7,14 @@
       <span class="govuk-caption-l">{{ user.name }}</span>
       <h1 class="govuk-heading-xl">My GDaD evidence</h1>
 
-      {% if csvImportUpdatedCount and csvImportUpdatedCount > 0 %}
+      {% if csvImportUpdatedCount === 0 %}
+        {{ govukNotificationBanner({
+          text: "No evidence was changed. The evidence in your file is the same as the evidence already saved."
+        }) }}
+      {% elif csvImportUpdatedCount > 0 %}
         {{ govukNotificationBanner({
           type: "success",
-          text: "Imported evidence for " + csvImportUpdatedCount + " skill(s)."
+          text: "Imported evidence for " + csvImportUpdatedCount + (" skill" if csvImportUpdatedCount == 1 else " skills") + "."
         }) }}
       {% endif %}
 

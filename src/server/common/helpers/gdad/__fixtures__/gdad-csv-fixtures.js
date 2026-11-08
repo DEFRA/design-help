@@ -102,7 +102,8 @@ export const LEGACY_SAFE_EVIDENCE = {
  */
 export function fillTemplate(gradeKey, evidenceBySkill) {
   const rows = parse(buildGradeTemplateCsv(gradeKey), {
-    relax_column_count: true
+    relax_column_count: true,
+    bom: true
   })
   const [header, ...skillRows] = rows
   const filled = skillRows.map((row) => {

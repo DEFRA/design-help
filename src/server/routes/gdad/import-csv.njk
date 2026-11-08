@@ -22,6 +22,10 @@
         for each recognised skill.
       </p>
       <p class="govuk-body">
+        Skills you leave blank in the file are not changed, so any evidence you have already saved for them stays as it is.
+        Skills whose evidence is the same as what is already saved are not changed either.
+      </p>
+      <p class="govuk-body">
         Scores in the CSV are ignored. Official scores are still set during review.
       </p>
       <p class="govuk-body">
@@ -41,7 +45,7 @@
             classes: "govuk-label--m"
           },
           hint: {
-            text: "Accepted format: the reference template CSV with SKILL, SITUATION, TASK, ACTION and RESULT columns."
+            text: "Use the reference template with SKILL, SITUATION, TASK, ACTION and RESULT columns. In Excel, save it as CSV UTF-8. The file must be smaller than 2MB."
           },
           attributes: {
             accept: ".csv,text/csv"
