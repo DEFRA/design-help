@@ -5,8 +5,17 @@ import { sendMagicLinkEmail } from '#/server/common/helpers/notify.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 import { isSignInAvailable } from '#/server/common/helpers/auth/sign-in-availability.js'
 import { getLandingPath } from '#/server/common/helpers/auth/landing-path.js'
+import { linkLifetimeText } from '#/server/common/helpers/auth/link-lifetime.js'
 
 const logger = createLogger()
+
+/** How long sign-in links last, in words, for the sign-in pages. */
+function linkLifetimes() {
+  return {
+    signInLinkLifetime: linkLifetimeText(config.get('auth.magicLinkTtl')),
+    inviteLinkLifetime: linkLifetimeText(config.get('auth.inviteLinkTtl'))
+  }
+}
 
 const DEFRA_EMAIL_PATTERN = /^[^@\s]+@defra\.gov\.uk$/i
 const ANY_EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -83,7 +92,8 @@ export const signInRoutes = [
       const [email] = request.yar.flash('signInEmail')
       return h.view('sign-in/check-email', {
         pageTitle: 'Check your email',
-        email
+        email,
+        ...linkLifetimes()
       })
     }
   },
@@ -94,14 +104,16 @@ export const signInRoutes = [
       const email = await request.server.magicLinks.consume(request.query.token)
       if (!email) {
         return h.view('sign-in/invalid-link', {
-          pageTitle: 'This sign-in link has expired'
+          pageTitle: 'This sign-in link has expired',
+          ...linkLifetimes()
         })
       }
 
       const person = await backendApi.getPersonByEmail(email)
       if (!person || !person.approved) {
         return h.view('sign-in/invalid-link', {
-          pageTitle: 'This sign-in link has expired'
+          pageTitle: 'This sign-in link has expired',
+          ...linkLifetimes()
         })
       }
 

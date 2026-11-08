@@ -96,6 +96,40 @@ describe('#signInRoutes landing', () => {
     })
     expect(statusCode).toBe(200)
     expect(result).toContain('This sign-in link has expired')
+    expect(result).toContain(
+      'A link you request yourself expires after 15 minutes.'
+    )
+    expect(result).toContain(
+      'If you were invited by email, your link lasts 7 days.'
+    )
+  })
+
+  test('Check your email gives the time for a link you requested', async () => {
+    const { result } = await server.inject({
+      method: 'GET',
+      url: '/sign-in/check-email'
+    })
+    expect(result).toContain(
+      'The link works once and expires after 15 minutes.'
+    )
+    expect(result).not.toContain('7 days')
+  })
+
+  test('A wrong email address shows the error with "Error:" in the title', async () => {
+    const { result } = await server.inject({
+      method: 'POST',
+      url: '/sign-in',
+      headers: { cookie: 'crumb=test-crumb' },
+      payload: { crumb: 'test-crumb', email: 'not-an-email' }
+    })
+    expect(result).toMatch(/<title>\s*Error: Sign in \|/)
+    expect(result).toContain('href="#email"')
+    expect(result).toContain('id="email-error"')
+  })
+
+  test('The sign-in page has no "Error:" in the title before submitting', async () => {
+    const { result } = await server.inject({ method: 'GET', url: '/sign-in' })
+    expect(result).toMatch(/<title>\s*Sign in \|/)
   })
 
   test.each([

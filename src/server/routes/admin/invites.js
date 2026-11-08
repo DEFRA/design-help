@@ -1,6 +1,7 @@
 import { config } from '#/config/config.js'
 import { sendMagicLinkEmail } from '#/server/common/helpers/notify.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
+import { linkLifetimeText } from '#/server/common/helpers/auth/link-lifetime.js'
 
 const logger = createLogger()
 
@@ -56,17 +57,9 @@ function plural(count, one, many) {
   return count === 1 ? one : many
 }
 
-const HOUR_MS = 60 * 60 * 1000
-const DAY_MS = 24 * HOUR_MS
-
 /** How long an invite link lasts, in words: "7 days", "12 hours". */
 export function inviteLinkLifetimeText(ttl = config.get('auth.inviteLinkTtl')) {
-  if (ttl >= DAY_MS && ttl % DAY_MS === 0) {
-    const days = ttl / DAY_MS
-    return `${days} ${plural(days, 'day', 'days')}`
-  }
-  const hours = Math.max(1, Math.round(ttl / HOUR_MS))
-  return `${hours} ${plural(hours, 'hour', 'hours')}`
+  return linkLifetimeText(ttl)
 }
 
 /** Banner shown on People and access after sending invites. */

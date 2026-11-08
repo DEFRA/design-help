@@ -6,7 +6,10 @@
       <h1 class="govuk-heading-xl">This sign-in link has expired</h1>
 
       <p class="govuk-body">
-        Sign-in links work once and expire after 15 minutes.
+        Sign-in links work once. A link you request yourself expires after {{ signInLinkLifetime }}.
+      </p>
+      <p class="govuk-body">
+        If you were invited by email, your link lasts {{ inviteLinkLifetime }}.
       </p>
       <p class="govuk-body">
         <a class="govuk-link govuk-link--no-visited-state" href="/sign-in">Request a new sign-in link</a>
