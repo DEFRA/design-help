@@ -7,6 +7,13 @@
 
       <a class="govuk-back-link" href="/my-team">Back to My team</a>
 
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error, href: "#score-" + errorSkillKey }]
+        }) }}
+      {% endif %}
+
       <span class="govuk-caption-l">{{ targetName }} · {{ targetRole }}</span>
       <h1 class="govuk-heading-xl">GDaD evidence</h1>
 
@@ -14,13 +21,6 @@
         {{ govukNotificationBanner({
           type: "success",
           text: "Scores saved."
-        }) }}
-      {% endif %}
-
-      {% if error %}
-        {{ govukErrorSummary({
-          titleText: "There is a problem",
-          errorList: [{ text: error }]
         }) }}
       {% endif %}
 
@@ -45,7 +45,9 @@
           skillRows: skillRows,
           skillHref: "/review/gdad-evidence/" + targetPersonId + "/",
           scoreControls: true,
-          disabled: not canEditScores
+          disabled: not canEditScores,
+          errorSkillKey: errorSkillKey,
+          errorText: error
         }) }}
 
         {% if canEditScores %}

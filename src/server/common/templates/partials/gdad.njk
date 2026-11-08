@@ -7,6 +7,8 @@
   view adds evidence editing.
 #}
 
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+
 {% macro gdadScoreText(skill) %}
   {%- if skill.officialScore -%}
     {{ skill.officialScore }} — {{ skill.scoreLabel }}
@@ -55,9 +57,10 @@
   params.skillRows    — from buildSkillRows (always the 7 skills in framework order)
   params.skillHref    — link prefix for each skill page; the skill key is appended
   params.scoreControls — true on the manager's view: adds a "Change score" column
+  params.errorSkillKey / params.errorText — show an error next to that skill's score
 #}
 {% macro gdadSkillsTable(params) %}
-  <div tabindex="0" class="gdad-table-scroll govuk-!-margin-bottom-6">
+  <div tabindex="0" role="region" aria-label="Skills table, scrolls sideways" class="gdad-table-scroll govuk-!-margin-bottom-6">
     <table class="govuk-table">
       <caption class="govuk-table__caption govuk-table__caption--m">Skills</caption>
       <thead class="govuk-table__head">
@@ -106,13 +109,23 @@
             </td>
             {% if params.scoreControls %}
               <td class="govuk-table__cell">
-                <label class="govuk-visually-hidden" for="score-{{ skill.key }}">Score for {{ skill.label }}</label>
-                <select class="govuk-select" id="score-{{ skill.key }}" name="score_{{ skill.key }}" {% if params.disabled %}disabled{% endif %}>
-                  <option value="" {% if not skill.officialScore %}selected{% endif %}>Not set</option>
-                  <option value="1" {% if skill.officialScore == 1 %}selected{% endif %}>1 — Below standard</option>
-                  <option value="2" {% if skill.officialScore == 2 %}selected{% endif %}>2 — At standard</option>
-                  <option value="3" {% if skill.officialScore == 3 %}selected{% endif %}>3 — Above standard</option>
-                </select>
+                {{ govukSelect({
+                  id: "score-" + skill.key,
+                  name: "score_" + skill.key,
+                  label: {
+                    text: "Score for " + skill.label,
+                    classes: "govuk-visually-hidden"
+                  },
+                  items: [
+                    { value: "", text: "Not set", selected: not skill.officialScore },
+                    { value: "1", text: "1 — Below standard", selected: skill.officialScore == 1 },
+                    { value: "2", text: "2 — At standard", selected: skill.officialScore == 2 },
+                    { value: "3", text: "3 — Above standard", selected: skill.officialScore == 3 }
+                  ],
+                  disabled: params.disabled,
+                  formGroup: { classes: "govuk-!-margin-bottom-0" },
+                  errorMessage: { text: params.errorText } if params.errorText and params.errorSkillKey == skill.key
+                }) }}
               </td>
             {% endif %}
           </tr>

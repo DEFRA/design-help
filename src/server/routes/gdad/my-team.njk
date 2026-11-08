@@ -30,7 +30,7 @@
           </p>
         {% endif %}
 
-        <div tabindex="0" class="gdad-table-scroll govuk-!-margin-bottom-6">
+        <div tabindex="0" role="region" aria-label="Designers table, scrolls sideways" class="gdad-table-scroll govuk-!-margin-bottom-6">
           <table class="govuk-table">
             <caption class="govuk-table__caption govuk-table__caption--m">Designers</caption>
             <thead class="govuk-table__head">
@@ -80,6 +80,9 @@
 
       <p class="govuk-body">
         <a class="govuk-link" href="/review/gdad-evidence/export.csv">Download scores for {{ "everyone" if gdadReviewerRole == 'hod' else "your team" }} (CSV)</a>
+      </p>
+      <p class="govuk-body">
+        This file contains personal information. Store it somewhere only the right people can see it, and delete it when you no longer need it.
       </p>
       <p class="govuk-body-s">
         Accessibility specialist and resource manager job titles are not shown, because they are not on the GDaD design skills path yet.

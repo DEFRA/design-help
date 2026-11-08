@@ -48,15 +48,22 @@
 
       <form method="post" action="/review/gdad-evidence/{{ targetPersonId }}/{{ skill.key }}" novalidate>
         <input type="hidden" name="crumb" value="{{ crumb }}">
-        <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--m" for="score-{{ skill.key }}">Change score</label>
-          <select class="govuk-select" id="score-{{ skill.key }}" name="score_{{ skill.key }}" {% if not canEditScores %}disabled{% endif %}>
-            <option value="" {% if not skill.officialScore %}selected{% endif %}>Not set</option>
-            <option value="1" {% if skill.officialScore == 1 %}selected{% endif %}>1 — Below standard</option>
-            <option value="2" {% if skill.officialScore == 2 %}selected{% endif %}>2 — At standard</option>
-            <option value="3" {% if skill.officialScore == 3 %}selected{% endif %}>3 — Above standard</option>
-          </select>
-        </div>
+        {{ govukSelect({
+          id: "score-" + skill.key,
+          name: "score_" + skill.key,
+          label: {
+            text: "Change score" if skill.officialScore else "Score",
+            classes: "govuk-label--m"
+          },
+          items: [
+            { value: "", text: "Not set", selected: not skill.officialScore },
+            { value: "1", text: "1 — Below standard", selected: skill.officialScore == 1 },
+            { value: "2", text: "2 — At standard", selected: skill.officialScore == 2 },
+            { value: "3", text: "3 — Above standard", selected: skill.officialScore == 3 }
+          ],
+          disabled: not canEditScores,
+          errorMessage: { text: error } if error
+        }) }}
 
         {% if canEditScores %}
           {{ govukButton({ text: "Save score" }) }}

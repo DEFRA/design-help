@@ -36,12 +36,21 @@
       <form method="post" action="/my-gdad-evidence/{{ skill.key }}" novalidate>
         <input type="hidden" name="crumb" value="{{ crumb }}">
 
-        <div class="govuk-form-group govuk-character-count" data-module="govuk-character-count" data-maxlength="12000">
-          <label class="govuk-label govuk-label--s" for="evidence-{{ skill.key }}">Your evidence</label>
-          <div id="evidence-{{ skill.key }}-hint" class="govuk-hint">{{ skill.starHint }}</div>
-          <textarea class="govuk-textarea govuk-js-character-count" id="evidence-{{ skill.key }}" name="evidence_{{ skill.key }}" rows="12" aria-describedby="evidence-{{ skill.key }}-hint evidence-{{ skill.key }}-info">{{ skill.evidenceText }}</textarea>
-          <div id="evidence-{{ skill.key }}-info" class="govuk-hint govuk-character-count__message">You can enter up to 12,000 characters</div>
-        </div>
+        {{ govukCharacterCount({
+          id: "evidence-" + skill.key,
+          name: "evidence_" + skill.key,
+          maxlength: 12000,
+          rows: 12,
+          value: evidenceValue if evidenceValue is defined else skill.evidenceText,
+          label: {
+            text: "Your evidence",
+            classes: "govuk-label--s"
+          },
+          hint: {
+            text: skill.starHint
+          },
+          errorMessage: { text: error } if error
+        }) }}
 
         {{ govukButton({ text: "Save evidence" }) }}
       </form>

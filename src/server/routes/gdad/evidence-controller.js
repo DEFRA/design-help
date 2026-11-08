@@ -183,7 +183,8 @@ export const gdadEvidenceRoutes = [
         return h
           .view('gdad/skill', {
             ...skillViewContext(person, skillKey),
-            error: `Evidence is too long (max ${MAX_EVIDENCE_LENGTH} characters).`,
+            error: `Evidence must be ${MAX_EVIDENCE_LENGTH.toLocaleString('en-GB')} characters or fewer`,
+            evidenceValue: text,
             justSaved: false
           })
           .code(400)

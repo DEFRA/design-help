@@ -97,7 +97,7 @@ function targetViewContext(target) {
 
 /**
  * All seven `score_<key>` fields: blank clears, otherwise 1–3.
- * Returns `{ scores }` or `{ invalid: true }`.
+ * Returns `{ scores }` or `{ invalid: true, invalidKey }`.
  */
 function parseScorePayload(payload) {
   const scores = {}
@@ -109,7 +109,7 @@ function parseScorePayload(payload) {
     }
     const n = Number(raw)
     if (![1, 2, 3].includes(n)) {
-      return { invalid: true }
+      return { invalid: true, invalidKey: key }
     }
     scores[key] = n
   }
@@ -189,16 +189,23 @@ export const gdadReviewRoutes = [
       }
 
       const skillRows = buildSkillRows(target.gdad, target.role)
+      const hasError = request.query.err === 'invalid'
+      // The error is shown next to the score that was not valid, or the
+      // first score if we do not know which one it was
+      const querySkill = String(request.query.skill ?? '')
+      const errorSkillKey = SKILL_KEY_SET.has(querySkill)
+        ? querySkill
+        : skillRows[0]?.key
       return h.view('gdad/review-person', {
         pageTitle: `GDaD evidence — ${target.name}`,
         skillRows,
         capabilityBand: buildCapabilityBand(skillRows),
         ...targetViewContext(target),
         justSaved: request.query.saved === '1',
-        error:
-          request.query.err === 'invalid'
-            ? 'Select valid score values (1, 2, 3 or Not set).'
-            : null
+        error: hasError
+          ? 'Select valid score values (1, 2, 3 or Not set).'
+          : null,
+        errorSkillKey: hasError ? errorSkillKey : null
       })
     }
   },
@@ -211,9 +218,11 @@ export const gdadReviewRoutes = [
         return response
       }
 
-      const { scores, invalid } = parseScorePayload(request.payload)
+      const { scores, invalid, invalidKey } = parseScorePayload(request.payload)
       if (invalid) {
-        return h.redirect(`/review/gdad-evidence/${target.id}?err=invalid`)
+        return h.redirect(
+          `/review/gdad-evidence/${target.id}?err=invalid&skill=${encodeURIComponent(invalidKey)}`
+        )
       }
 
       await backendApi.saveGdadScores(target.id, scores, request.app.user.id)

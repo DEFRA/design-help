@@ -7,6 +7,13 @@
         <a class="govuk-back-link" href="/my-gdad-evidence">Back to GDaD evidence overview</a>
       </p>
 
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error, href: "#evidenceCsv" }]
+        }) }}
+      {% endif %}
+
       <h1 class="govuk-heading-xl">Import GDaD evidence from CSV</h1>
 
       <p class="govuk-body">
@@ -24,22 +31,23 @@
         <a class="govuk-link" href="/gdad-reference/template-g6.csv">G6</a>.
       </p>
 
-      {% if error %}
-        {{ govukErrorSummary({
-          titleText: "There is a problem",
-          errorList: [{ text: error }]
-        }) }}
-      {% endif %}
-
       <form method="post" action="/my-gdad-evidence/import-csv" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="crumb" value="{{ crumb }}">
-        <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--m" for="evidenceCsv">CSV file</label>
-          <div id="evidenceCsv-hint" class="govuk-hint">
-            Accepted format: the reference template CSV with SKILL, SITUATION, TASK, ACTION and RESULT columns.
-          </div>
-          <input class="govuk-file-upload" id="evidenceCsv" name="evidenceCsv" type="file" accept=".csv,text/csv" aria-describedby="evidenceCsv-hint">
-        </div>
+        {{ govukFileUpload({
+          id: "evidenceCsv",
+          name: "evidenceCsv",
+          label: {
+            text: "CSV file",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Accepted format: the reference template CSV with SKILL, SITUATION, TASK, ACTION and RESULT columns."
+          },
+          attributes: {
+            accept: ".csv,text/csv"
+          },
+          errorMessage: { text: error } if error
+        }) }}
 
         <button class="govuk-button" data-module="govuk-button" type="submit">Import evidence</button>
       </form>
