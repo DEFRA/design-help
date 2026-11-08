@@ -8,6 +8,13 @@
         <a href="{{ adminReturnUrl if adminReturnUrl else '/browse' }}" class="govuk-back-link">Back</a>
       </p>
 
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
       <h1 class="govuk-heading-xl">{{ formTitle }}</h1>
 
       {% if success %}
@@ -20,13 +27,6 @@
         {% endset %}
         {{ govukNotificationBanner({ type: "success", html: successHtml }) }}
       {% endif %}
-      {% if error %}
-        {{ govukErrorSummary({
-          titleText: "There is a problem",
-          errorList: [{ text: error }]
-        }) }}
-      {% endif %}
-
       {% if isWizardMode %}
         <p class="govuk-body govuk-!-margin-bottom-2">Step {{ wizardStepIndex }} of {{ wizardStepCount }}</p>
       {% endif %}

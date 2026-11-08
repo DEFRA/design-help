@@ -8,6 +8,13 @@
         <a href="/browse" class="govuk-back-link">Back</a>
       </p>
 
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
       <h1 class="govuk-heading-xl">
         {% if profile and profile.name %}Update your profile{% else %}Create my profile{% endif %}
       </h1>
@@ -22,13 +29,6 @@
         {% endset %}
         {{ govukNotificationBanner({ type: "success", html: successHtml }) }}
       {% endif %}
-      {% if error %}
-        {{ govukErrorSummary({
-          titleText: "There is a problem",
-          errorList: [{ text: error }]
-        }) }}
-      {% endif %}
-
       <form method="post" action="/my-profile/edit">
         <input type="hidden" name="crumb" value="{{ crumb }}">
 

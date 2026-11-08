@@ -11,8 +11,9 @@
   </div>
 {% endmacro %}
 
-{% macro managerTable(rows) %}
+{% macro managerTable(rows, caption) %}
   <table class="govuk-table">
+    <caption class="govuk-table__caption govuk-visually-hidden">{{ caption }}</caption>
     <thead class="govuk-table__head">
       <tr class="govuk-table__row">
         <th scope="col" class="govuk-table__header">Line manager</th>
@@ -72,7 +73,7 @@
           </p>
 
           {% if lineManagerRows and lineManagerRows.length > 0 %}
-            {{ managerTable(lineManagerRows) }}
+            {{ managerTable(lineManagerRows, "Current line managers") }}
           {% else %}
             <p class="govuk-body">No line managers identified yet. Add people using the list below.</p>
           {% endif %}
@@ -83,7 +84,7 @@
           </p>
 
           {% if addCandidateRows and addCandidateRows.length > 0 %}
-            {{ managerTable(addCandidateRows) }}
+            {{ managerTable(addCandidateRows, "People who can be added as line managers") }}
           {% else %}
             <p class="govuk-body">Everyone registered is already a line manager.</p>
           {% endif %}

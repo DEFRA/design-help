@@ -7,6 +7,13 @@
         <a href="/my-profile" class="govuk-back-link">Back to my profile</a>
       </p>
 
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error }]
+        }) }}
+      {% endif %}
+
       <h1 class="govuk-heading-xl">I&rsquo;m helping someone</h1>
       <p class="govuk-body">Update who you&rsquo;re giving long-term support to and your availability, without editing your full profile.</p>
 
@@ -19,13 +26,6 @@
           </p>
         {% endset %}
         {{ govukNotificationBanner({ type: "success", html: savedHtml }) }}
-      {% endif %}
-
-      {% if error %}
-        {{ govukErrorSummary({
-          titleText: "There is a problem",
-          errorList: [{ text: error }]
-        }) }}
       {% endif %}
 
       <form method="post" action="/my-profile/helping">

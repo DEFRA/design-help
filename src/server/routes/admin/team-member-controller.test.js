@@ -324,6 +324,7 @@ describe('#teamMemberRoutes', () => {
       expect(result).toContain('value="someone@gmail.com"')
       expect(result).toContain('govuk-error-message')
       expect(result).toContain('Error: Set up a team member |')
+      expect(result).not.toContain('Error: Error:')
       expect(backendApi.createPerson).not.toHaveBeenCalled()
     })
 

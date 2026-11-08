@@ -92,8 +92,14 @@
   {% endif %}
 {% endblock %}
 
+{#
+  When a form comes back with errors, the page title starts with "Error: " so
+  screen reader users hear about the problem as soon as the page loads.
+  Pages pass their errors as `error`, `errorMessage`, `errors` or `errorList`.
+#}
+{% set hasFormError = error or errorMessage or (errors and errors | length) or (errorList and errorList | length) %}
 {% block pageTitle %}
-  {{ pageTitle }} | {{ serviceName }}
+  {% if hasFormError and (pageTitle | string).indexOf("Error:") != 0 %}Error: {% endif %}{{ pageTitle }} | {{ serviceName }}
 {% endblock %}
 
 {% block beforeContent %}
