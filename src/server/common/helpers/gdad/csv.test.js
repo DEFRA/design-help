@@ -157,6 +157,40 @@ describe('#parseGdadTemplateCsv', () => {
     )
   })
 
+  test.each([
+    ['tabs', '\t'],
+    ['semicolons', ';']
+  ])(
+    'Should pick %s for edited skill cells and headings with commas in the evidence',
+    (_label, sep) => {
+      const csv = [
+        ['Skill name', 'Situation', 'Task', 'Action', 'Result'],
+        ['Leading design - P', 'x, y, z, w, v', 't', 'a', 'r']
+      ]
+        .map((row) => row.join(sep))
+        .join('\r\n')
+
+      expect(parseGdadTemplateCsv(csv).evidenceBySkill).toEqual({
+        leading_design:
+          'Situation: x, y, z, w, v\n\nTask: t\n\nAction: a\n\nResult: r'
+      })
+    }
+  )
+
+  test('Should refuse when no reading fits but one would import a skill', () => {
+    // The only reading that parses keeps a semicolon inside the skill
+    // cell, so the row was probably split wrongly: too risky to guess
+    const csv = '"Leading design - P;x",s,t,a,r'
+    expect(() => parseGdadTemplateCsv(csv)).toThrow(CsvDelimiterError)
+  })
+
+  test('Should pick tabs over commas for a loose skill name with no header', () => {
+    const csv = 'Leading design - P x\ty, z, w, v, u\tt\ta\tr'
+    expect(parseGdadTemplateCsv(csv).evidenceBySkill.leading_design).toBe(
+      'Situation: y, z, w, v, u\n\nTask: t\n\nAction: a\n\nResult: r'
+    )
+  })
+
   test('Should refuse a file where commas and semicolons disagree', () => {
     const csv = ['Iterative design,s,t,a,r,0', 'Leading design;s;t;a;r;0'].join(
       '\n'

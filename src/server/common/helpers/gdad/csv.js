@@ -125,26 +125,49 @@ export class CsvDelimiterError extends Error {
   }
 }
 
+const DELIMITERS = [',', ';', '\t']
+
+/**
+ * How well a reading fits the template. Per row: 2 for an exact skill
+ * name in the first cell; 1 for a looser match the importer would still
+ * accept (for example “Leading design - P”), unless the cell’s first line
+ * still holds another delimiter — a sign the row was split wrongly. Plus
+ * 1 when the first row splits into template-style headings.
+ */
 function scoreDelimiterParse(rows) {
   const nonBlank = rows.filter((row) => !isBlankRow(row))
-  const exactSkillRows = nonBlank.filter((row) =>
-    namesSkillExactly(row[0])
-  ).length
-  const header =
+  let score = 0
+  for (const row of nonBlank) {
+    if (namesSkillExactly(row[0])) {
+      score += 2
+    } else if (
+      resolveSkillKey(row[0]) &&
+      !DELIMITERS.some((d) => firstLineOf(row[0]).includes(d))
+    ) {
+      score += 1
+    }
+  }
+  if (
     nonBlank.length > 0 &&
     nonBlank[0].length >= 5 &&
-    cellText(nonBlank[0][0]) === 'skill' &&
     looksLikeHeaderRow(nonBlank[0])
-  return exactSkillRows + (header ? 1 : 0)
+  ) {
+    score += 1
+  }
+  return score
+}
+
+function sameRows(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 /**
  * Reads the file with each delimiter spreadsheet tools use and keeps the
- * one where rows start with an exact skill name (and the template header
- * splits into its headings). Evidence often contains commas, so “parses
- * without error” is not enough: a tab or semicolon file with commas in
- * the evidence also parses as comma-separated, wrongly. A tie between
- * readings that disagree is refused rather than guessed.
+ * reading that best fits the template (see scoreDelimiterParse). Evidence
+ * often contains commas, so “parses without error” is not enough: a tab
+ * or semicolon file with commas in the evidence also parses as
+ * comma-separated, wrongly. A tie between readings that disagree is
+ * refused rather than guessed.
  */
 function parseRowsWithDelimiterDetection(csvText) {
   const baseOptions = {
@@ -154,7 +177,7 @@ function parseRowsWithDelimiterDetection(csvText) {
   }
   const candidates = []
   let lastError = null
-  for (const delimiter of [',', ';', '\t']) {
+  for (const delimiter of DELIMITERS) {
     try {
       const rows = parse(csvText, { ...baseOptions, delimiter })
       candidates.push({ rows, score: scoreDelimiterParse(rows) })
@@ -167,17 +190,21 @@ function parseRowsWithDelimiterDetection(csvText) {
   }
 
   const bestScore = Math.max(...candidates.map((c) => c.score))
-  if (bestScore === 0) {
-    // No exact skill names anywhere: keep the old order of preference so
-    // the route can explain what is wrong with the file
-    return candidates[0].rows
-  }
-  const best = candidates.filter((c) => c.score === bestScore)
-  const first = JSON.stringify(best[0].rows)
-  if (best.some((c) => JSON.stringify(c.rows) !== first)) {
+  if (bestScore > 0) {
+    const best = candidates.filter((c) => c.score === bestScore)
+    if (best.every((c) => sameRows(c.rows, best[0].rows))) {
+      return best[0].rows
+    }
     throw new CsvDelimiterError()
   }
-  return best[0].rows
+  // No reading fits the template. Keep the first (comma) reading so the
+  // route can say no skills were found — unless that reading would still
+  // import a skill from a wrongly split row, which is too risky
+  const [fallback] = candidates
+  if (fallback.rows.some((row) => resolveSkillKey(row?.[0]))) {
+    throw new CsvDelimiterError()
+  }
+  return fallback.rows
 }
 
 const NUL_CHAR = String.fromCharCode(0)

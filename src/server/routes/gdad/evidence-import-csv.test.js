@@ -532,6 +532,27 @@ describe('#gdadEvidenceRoutes CSV import', () => {
       }
     )
 
+    test.each([
+      ['tab', '\t'],
+      ['semicolon', ';']
+    ])(
+      'Saves exactly from a %s file with edited skill cells and headings',
+      async (_label, sep) => {
+        const file = [
+          ['Skill name', 'Situation', 'Task', 'Action', 'Result'],
+          ['Leading design - P', 'x, y, z, w, v', 't', 'a', 'r']
+        ]
+          .map((row) => row.join(sep))
+          .join('\r\n')
+        const { headers } = await upload({ file })
+        expect(headers.location).toBe('/my-gdad-evidence?imported=1')
+        expect(savedEvidence()[1]).toEqual({
+          leading_design:
+            'Situation: x, y, z, w, v\n\nTask: t\n\nAction: a\n\nResult: r'
+        })
+      }
+    )
+
     test('Refuses a file mixing commas and semicolons', async () => {
       const { statusCode, result } = await upload({
         file: 'Iterative design,s,t,a,r,0\r\nLeading design;s;t;a;r;0'
