@@ -94,14 +94,15 @@
                 </td>
                 <td class="govuk-table__cell">{{ row.role if row.role else "—" }}</td>
                 <td class="govuk-table__cell">
+                  {# Only statuses that need attention get a tag (GOV.UK task list pattern) #}
                   {% if row.pendingActivation %}
                     <strong class="govuk-tag govuk-tag--yellow">Pending</strong>
                   {% elif row.isBootstrapAdmin %}
-                    <strong class="govuk-tag govuk-tag--grey">Service admin</strong>
+                    Service admin
                   {% elif row.isAdmin %}
-                    <strong class="govuk-tag govuk-tag--blue">Admin</strong>
+                    Admin
                   {% elif row.hasProfile %}
-                    <strong class="govuk-tag govuk-tag--green">Active</strong>
+                    Active
                   {% else %}
                     —
                   {% endif %}

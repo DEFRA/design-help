@@ -903,6 +903,39 @@ describe('#teamMemberRoutes', () => {
       expect(result).not.toContain(`href="/admin/users/${ids.pending}/edit"`)
     })
 
+    test('Account column only tags Pending; other statuses are plain text', async () => {
+      const activatedAt = '2026-01-01T00:00:00.000Z'
+      mockState.people = [
+        person(ids.hod, {
+          email: 'hod@defra.gov.uk',
+          name: 'Pat Head',
+          isAdmin: true,
+          activatedAt
+        }),
+        person(ids.bootstrap, {
+          email: 'boot@defra.gov.uk',
+          name: 'Bea Boot',
+          activatedAt
+        }),
+        person(ids.report, { name: 'Rae Report', activatedAt }),
+        person(ids.pending, { email: 'pending@defra.gov.uk' })
+      ]
+      const { result } = await get(users.hod, '/admin/users')
+
+      expect(result).toContain(
+        '<strong class="govuk-tag govuk-tag--yellow">Pending</strong>'
+      )
+      expect(result.match(/class="govuk-tag/g)).toHaveLength(1)
+      for (const status of ['Active', 'Admin', 'Service admin']) {
+        expect(result).toMatch(
+          new RegExp(`<td class="govuk-table__cell">\\s*${status}\\s*</td>`)
+        )
+        expect(result).not.toMatch(
+          new RegExp(`govuk-tag[^"]*">${status}</strong>`)
+        )
+      }
+    })
+
     test('Head of Design gets no Edit profile buttons on rows', async () => {
       const { result } = await get(users.hod, '/admin/users')
       expect(result).not.toContain('Edit profile')
