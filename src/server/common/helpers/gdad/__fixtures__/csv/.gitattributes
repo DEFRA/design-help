@@ -1,0 +1,2 @@
+# Exact bytes matter (encodings, BOMs, CR/LF line endings) — never convert
+* binary
