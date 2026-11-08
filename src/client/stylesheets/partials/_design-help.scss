@@ -308,6 +308,33 @@ $design-help-border: #b1b4b6;
   }
 }
 
+// People and access table: Send invite sits under the Pending tag in the
+// Account column, so the row actions line up down the table
+.design-help-admin-users__invite {
+  margin: 0.5rem 0 0;
+
+  form {
+    margin: 0;
+  }
+
+  .govuk-button {
+    margin-bottom: 0;
+    padding: 5px 8px 4px;
+    font-size: 1rem;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  &.govuk-hint {
+    font-size: 1rem;
+  }
+}
+
+// Keep the Account column wide enough for "Send invite" on one line
+.design-help-admin-users__account {
+  min-width: 7.5rem;
+}
+
 // On wide screens keep the action buttons on one line
 @media (min-width: 64em) {
   .design-help-admin-users__actions-header {

@@ -252,6 +252,38 @@ describe('#invitesRoutes', () => {
       }
     })
 
+    test('Send invite sits in the Account cell under Pending, not in Actions', async () => {
+      const { result } = await get(users.admin, '/admin/users')
+      const accountCells = result.match(
+        /<td class="govuk-table__cell design-help-admin-users__account">[\s\S]*?<\/td>/g
+      )
+      const actionCells = result.match(
+        /<div class="design-help-admin-users-actions">[\s\S]*?<\/div>/g
+      )
+      expect(actionCells.length).toBeGreaterThan(0)
+      for (const cell of actionCells) {
+        expect(cell).not.toContain('/invite"')
+        expect(cell).not.toContain('Send invite')
+        expect(cell).not.toContain('can’t invite')
+      }
+
+      const pendingNamedCell = accountCells.find((cell) =>
+        cell.includes(`action="/admin/users/${ids.pendingNamed}/invite"`)
+      )
+      expect(pendingNamedCell).toMatch(
+        /govuk-tag--yellow">Pending<\/strong>\s*<div class="design-help-admin-users__invite">\s*<form method="post"/
+      )
+      expect(pendingNamedCell).toContain(
+        'Send invite<span class="govuk-visually-hidden"> to Pat Pending</span>'
+      )
+      expect(
+        accountCells.filter((cell) => cell.includes('Send invite'))
+      ).toHaveLength(2)
+      expect(
+        accountCells.filter((cell) => cell.includes('can’t invite'))
+      ).toHaveLength(2)
+    })
+
     test('Explains why a pending person whose access was removed has no invite button', async () => {
       const { result } = await get(users.admin, '/admin/users')
       expect(result.match(/Access removed — can’t invite/g)).toHaveLength(2)

@@ -928,7 +928,9 @@ describe('#teamMemberRoutes', () => {
       expect(result.match(/class="govuk-tag/g)).toHaveLength(1)
       for (const status of ['Active', 'Admin', 'Service admin']) {
         expect(result).toMatch(
-          new RegExp(`<td class="govuk-table__cell">\\s*${status}\\s*</td>`)
+          new RegExp(
+            `<td class="govuk-table__cell design-help-admin-users__account">\\s*${status}\\s*</td>`
+          )
         )
         expect(result).not.toMatch(
           new RegExp(`govuk-tag[^"]*">${status}</strong>`)
