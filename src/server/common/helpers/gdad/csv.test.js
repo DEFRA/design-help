@@ -1,6 +1,7 @@
 import { parse } from 'csv-parse/sync'
 
 import {
+  CsvDelimiterError,
   CsvEncodingError,
   buildAdminExportCsv,
   buildGradeTemplateCsv,
@@ -74,7 +75,11 @@ describe('#parseGdadTemplateCsv', () => {
       'designing_together',
       'evidence_based_design'
     ])
-    // Both spellings resolve to the same key; the later row overwrites
+    // Both spellings resolve to the same key, so the rows are reported
+    // as duplicates (the route refuses the file)
+    expect(parseGdadTemplateCsv(csv).duplicateSkillRows).toEqual([
+      { skillKey: 'evidence_based_design', rowNumbers: [1, 2] }
+    ])
     expect(evidenceBySkill.evidence_based_design).toBe(
       'Situation: s2\n\nTask: t2\n\nAction: a2\n\nResult: r2'
     )
@@ -83,18 +88,81 @@ describe('#parseGdadTemplateCsv', () => {
     )
   })
 
-  test('Should let a later duplicate skill row overwrite an earlier one', () => {
+  test('Should report two rows with evidence for the same skill', () => {
     const csv = [
       'Design communication,first s,first t,first a,first r,0',
-      'Design communication,second s,second t,second a,second r,0'
+      'Leading design,s,t,a,r,0',
+      'Design communication,second s,second t,second a,second r,0',
+      'Design communication,,,,,0'
     ].join('\n')
 
-    const { evidenceBySkill, importedSkillKeys } = parseGdadTemplateCsv(csv)
+    expect(parseGdadTemplateCsv(csv).duplicateSkillRows).toEqual([
+      { skillKey: 'design_communication', rowNumbers: [1, 3] }
+    ])
+  })
 
+  test('Should report rows with evidence but too few columns', () => {
+    const csv = [
+      'Iterative design,only one column of evidence',
+      'Leading design',
+      'Design communication,s,t,a,r,0'
+    ].join('\n')
+
+    const { shortRows, matchedSkillKeys, importedSkillKeys } =
+      parseGdadTemplateCsv(csv)
+
+    expect(shortRows).toEqual([{ rowNumber: 1, skillKey: 'iterative_design' }])
+    expect(matchedSkillKeys).toContain('leading_design')
     expect(importedSkillKeys).toEqual(['design_communication'])
-    expect(evidenceBySkill.design_communication).toBe(
-      'Situation: second s\n\nTask: second t\n\nAction: second a\n\nResult: second r'
+  })
+
+  test('Should only skip a first row that looks like the header', () => {
+    const misspeltFirst = [
+      'Desing communication,s,t,a,r,0',
+      'Leading design,s,t,a,r,0'
+    ].join('\n')
+    expect(parseGdadTemplateCsv(misspeltFirst).unrecognisedRows).toEqual([
+      { rowNumber: 1, skillText: 'Desing communication' }
+    ])
+
+    const editedHeader = [
+      'Skill name,What happened,Goal,What I did,Outcome,Score',
+      'Leading design,s,t,a,r,0'
+    ].join('\n')
+    expect(parseGdadTemplateCsv(editedHeader).unrecognisedRows).toEqual([])
+
+    const starHeadings = [
+      'Area,Situation,Task,Action,Result,Scores',
+      'Leading design,s,t,a,r,0'
+    ].join('\n')
+    expect(parseGdadTemplateCsv(starHeadings).unrecognisedRows).toEqual([])
+  })
+
+  test('Should pick tabs when unquoted evidence is full of commas', () => {
+    const csv = 'Leading design\tx, y, z, w, v\ty\tz\tw\t0'
+
+    expect(parseGdadTemplateCsv(csv).evidenceBySkill.leading_design).toBe(
+      'Situation: x, y, z, w, v\n\nTask: y\n\nAction: z\n\nResult: w'
     )
+  })
+
+  test('Should pick semicolons when unquoted evidence is full of commas', () => {
+    const csv = [
+      'SKILL;SITUATION;TASK;ACTION;RESULT;SCORES',
+      'Leading design;x, y, z, w, v;y;z;w;0'
+    ].join('\r\n')
+
+    expect(parseGdadTemplateCsv(csv).evidenceBySkill.leading_design).toBe(
+      'Situation: x, y, z, w, v\n\nTask: y\n\nAction: z\n\nResult: w'
+    )
+  })
+
+  test('Should refuse a file where commas and semicolons disagree', () => {
+    const csv = ['Iterative design,s,t,a,r,0', 'Leading design;s;t;a;r;0'].join(
+      '\n'
+    )
+
+    expect(() => parseGdadTemplateCsv(csv)).toThrow(CsvDelimiterError)
   })
 
   test('Should fall back to semicolon and tab delimiters', () => {

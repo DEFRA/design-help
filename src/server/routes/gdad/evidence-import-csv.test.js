@@ -504,6 +504,90 @@ describe('#gdadEvidenceRoutes CSV import', () => {
       expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
     })
 
+    // The checker's repro: an unquoted tab file with commas in the
+    // evidence used to be read as comma-separated, losing “x” and saving
+    // the rest in the wrong columns with a success message
+    test.each([
+      ['Excel “Unicode Text” (UTF-16)', 'utf16le', '\uFEFF', '\t'],
+      ['a UTF-8 tab-separated file', 'utf8', '', '\t'],
+      ['a semicolon file', 'utf8', '', ';']
+    ])(
+      'Saves evidence with commas exactly from %s',
+      async (_label, encoding, bom, sep) => {
+        const text = [
+          ['SKILL', 'SITUATION', 'TASK', 'ACTION', 'RESULT', 'SCORES'],
+          ['Leading design', 'x, y, z, w, v', 'y', 'z', 'w', '0']
+        ]
+          .map((row) => row.join(sep))
+          .join('\r\n')
+        const { headers } = await upload({
+          file: Buffer.from(bom + text, encoding),
+          contentType: 'text/csv'
+        })
+        expect(headers.location).toBe('/my-gdad-evidence?imported=1')
+        expect(savedEvidence()[1]).toEqual({
+          leading_design:
+            'Situation: x, y, z, w, v\n\nTask: y\n\nAction: z\n\nResult: w'
+        })
+      }
+    )
+
+    test('Refuses a file mixing commas and semicolons', async () => {
+      const { statusCode, result } = await upload({
+        file: 'Iterative design,s,t,a,r,0\r\nLeading design;s;t;a;r;0'
+      })
+      expect(statusCode).toBe(statusCodes.badRequest)
+      expect(result).toContain(
+        'Save your spreadsheet as CSV UTF-8 and upload it again'
+      )
+      expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
+    })
+
+    test('Refuses two rows with evidence for the same skill, naming both', async () => {
+      const rows = fillTemplate('g7', UNICODE_EVIDENCE)
+      rows.push([rows[1][0], 'another go', '', '', '', '0'])
+      const { statusCode, result } = await upload({ file: toCsv(rows) })
+      expect(statusCode).toBe(statusCodes.badRequest)
+      expect(result).toContain(
+        'Design communication has evidence in more than one row (rows 2 and 9)'
+      )
+      expect(result).toContain('Nothing has been saved')
+      expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
+    })
+
+    test('Refuses rows with evidence but too few columns, naming them', async () => {
+      const file = [
+        'SKILL,SITUATION,TASK,ACTION,RESULT,SCORES',
+        'Leading design,s,t,a,r,0',
+        'Iterative design,only one column'
+      ].join('\r\n')
+      const { statusCode, result } = await upload({ file })
+      expect(statusCode).toBe(statusCodes.badRequest)
+      expect(result).toContain('row 3 (Iterative design)')
+      expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
+    })
+
+    test('Reports a misspelt skill on the first row when there is no header', async () => {
+      const [, ...rows] = fillTemplate('g7', UNICODE_EVIDENCE)
+      rows[0] = ['Desing comms', ...rows[0].slice(1)]
+      const { statusCode, result } = await upload({ file: toCsv(rows) })
+      expect(statusCode).toBe(statusCodes.badRequest)
+      expect(result).toContain('row 1 (“Desing comms”)')
+      expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
+    })
+
+    test('Lists each kind of problem separately in the error summary', async () => {
+      const rows = fillTemplate('g7', UNICODE_EVIDENCE)
+      rows[1] = ['Desing comms', ...rows[1].slice(1)]
+      rows.push([rows[2][0], 'another go', '', '', '', '0'])
+      const { result } = await upload({ file: toCsv(rows) })
+      const summary = result.slice(
+        result.indexOf('govuk-error-summary__list'),
+        result.indexOf('</ul>', result.indexOf('govuk-error-summary__list'))
+      )
+      expect(summary.match(/href="#evidenceCsv"/g)).toHaveLength(2)
+    })
+
     test('Escapes the skill text it repeats back', async () => {
       const rows = fillTemplate('g7', UNICODE_EVIDENCE)
       rows[1] = ['<script>alert(1)</script>', ...rows[1].slice(1)]

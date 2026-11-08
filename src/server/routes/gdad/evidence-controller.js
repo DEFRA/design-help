@@ -10,6 +10,7 @@ import {
   roleFrameworkPageUrl
 } from '#/server/common/helpers/gdad/constants.js'
 import {
+  CsvDelimiterError,
   CsvEncodingError,
   REPLACEMENT_CHARACTER,
   decodeCsvUpload,
@@ -57,13 +58,19 @@ const IMPORT_ERRORS = {
 
 const SKILL_LABELS = new Map(SKILLS.map((skill) => [skill.key, skill.label]))
 
-function importView(h, error) {
+/**
+ * The import form, with one error or a list of them. Each error appears
+ * in the error summary (linked to the file field) and beside the field.
+ */
+function importView(h, errorOrErrors) {
+  const errors = [errorOrErrors].flat().filter(Boolean)
   return h
     .view('gdad/import-csv', {
       pageTitle: 'Import GDaD evidence from CSV',
-      error
+      error: errors.join(' ') || null,
+      errorList: errors.map((text) => ({ text, href: '#evidenceCsv' }))
     })
-    .code(error ? 400 : 200)
+    .code(errors.length ? 400 : 200)
 }
 
 /**
@@ -100,7 +107,50 @@ function unrecognisedRowsMessage(rows) {
     )
     .join(', ')
   const which = rows.length === 1 ? 'This row has' : 'These rows have'
-  return `${which} evidence but the SKILL column does not match a GDaD skill: ${list}. Correct the SKILL column to the skill name from the template and upload the file again. Nothing has been saved.`
+  return `${which} evidence but the SKILL column does not match a GDaD skill: ${list}. Correct the SKILL column to the skill name from the template and upload the file again.`
+}
+
+function skillLabel(skillKey) {
+  return SKILL_LABELS.get(skillKey) ?? skillKey
+}
+
+function listRows(rowNumbers) {
+  const rows = rowNumbers.map(String)
+  const last = rows.pop()
+  return rows.length ? `${rows.join(', ')} and ${last}` : last
+}
+
+function duplicateRowsMessages(duplicates) {
+  return duplicates.map(
+    ({ skillKey, rowNumbers }) =>
+      `${skillLabel(skillKey)} has evidence in more than one row (rows ${listRows(rowNumbers)}). Put all the evidence for a skill in one row and upload the file again.`
+  )
+}
+
+function shortRowsMessage(rows) {
+  const list = rows
+    .map(
+      ({ rowNumber, skillKey }) => `row ${rowNumber} (${skillLabel(skillKey)})`
+    )
+    .join(', ')
+  const which = rows.length === 1 ? 'This row is' : 'These rows are'
+  return `${which} missing columns: ${list}. Each row needs SKILL, SITUATION, TASK, ACTION and RESULT columns, as in the template.`
+}
+
+/** Everything wrong with the rows, so the designer can fix it all at once. */
+function rowProblems({ unrecognisedRows, duplicateSkillRows, shortRows }) {
+  const problems = []
+  if (unrecognisedRows.length) {
+    problems.push(unrecognisedRowsMessage(unrecognisedRows))
+  }
+  problems.push(...duplicateRowsMessages(duplicateSkillRows))
+  if (shortRows.length) {
+    problems.push(shortRowsMessage(shortRows))
+  }
+  if (problems.length) {
+    problems[problems.length - 1] += ' Nothing has been saved.'
+  }
+  return problems
 }
 
 /** Line endings and surrounding spaces don’t count as a change. */
@@ -224,16 +274,22 @@ export const gdadEvidenceRoutes = [
       let parsed
       try {
         parsed = parseGdadTemplateCsv(csvText)
-      } catch {
-        return importView(h, IMPORT_ERRORS.unreadable)
+      } catch (err) {
+        return importView(
+          h,
+          err instanceof CsvDelimiterError
+            ? IMPORT_ERRORS.encoding
+            : IMPORT_ERRORS.unreadable
+        )
       }
 
-      const { evidenceBySkill, matchedSkillKeys, unrecognisedRows } = parsed
+      const { evidenceBySkill, matchedSkillKeys } = parsed
       if (!matchedSkillKeys.length) {
         return importView(h, IMPORT_ERRORS.noSkills)
       }
-      if (unrecognisedRows.length) {
-        return importView(h, unrecognisedRowsMessage(unrecognisedRows))
+      const problems = rowProblems(parsed)
+      if (problems.length) {
+        return importView(h, problems)
       }
       if (!Object.keys(evidenceBySkill).length) {
         return importView(h, IMPORT_ERRORS.noEvidence)
@@ -243,7 +299,7 @@ export const gdadEvidenceRoutes = [
         if (text.length > MAX_EVIDENCE_LENGTH) {
           return importView(
             h,
-            `Evidence for ${SKILL_LABELS.get(skillKey) ?? skillKey} is too long. It must be ${MAX_EVIDENCE_LENGTH.toLocaleString('en-GB')} characters or fewer, including the Situation, Task, Action and Result labels the import adds.`
+            `Evidence for ${skillLabel(skillKey)} is too long. It must be ${MAX_EVIDENCE_LENGTH.toLocaleString('en-GB')} characters or fewer, including the Situation, Task, Action and Result labels the import adds.`
           )
         }
       }

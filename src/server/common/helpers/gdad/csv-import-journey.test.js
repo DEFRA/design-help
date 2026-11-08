@@ -387,19 +387,16 @@ describe('GDaD CSV import — designer journey', () => {
       expect(() => importFile(csv)).toThrow(/Invalid Opening Quote/)
     })
 
-    // BUG (low): a semicolon file with no quoted cells anywhere is first
-    // read as comma-separated; evidence containing commas then splits
-    // into the wrong columns but still matches a skill.
-    it.fails(
-      'Reads an unquoted semicolon file with commas in the evidence',
-      () => {
-        const csv =
-          'Iterative design;Did a, b, c, d and e;my task;my action;my result;0'
-        expect(importFile(csv).evidenceBySkill.iterative_design).toBe(
-          'Situation: Did a, b, c, d and e\n\nTask: my task\n\nAction: my action\n\nResult: my result'
-        )
-      }
-    )
+    // A semicolon or tab file with no quoted cells also parses as
+    // comma-separated when the evidence has commas in it; the delimiter is
+    // chosen by which reading puts an exact skill name first in each row
+    test('Reads an unquoted semicolon file with commas in the evidence', () => {
+      const csv =
+        'Iterative design;Did a, b, c, d and e;my task;my action;my result;0'
+      expect(importFile(csv).evidenceBySkill.iterative_design).toBe(
+        'Situation: Did a, b, c, d and e\n\nTask: my task\n\nAction: my action\n\nResult: my result'
+      )
+    })
 
     test('A large file near the 2 MB upload limit parses', () => {
       const big = 'z'.repeat(250000)

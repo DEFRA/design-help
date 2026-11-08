@@ -80,22 +80,104 @@ function resolveSkillKey(rawSkillName) {
   return null
 }
 
-function parseRowsWithDelimiterFallback(csvText) {
+const HEADER_WORDS = new Set(['situation', 'task', 'action', 'result'])
+
+function cellText(value) {
+  return String(value ?? '')
+    .replace(/\uFEFF/g, '')
+    .trim()
+    .toLowerCase()
+}
+
+/**
+ * True when a row looks like the template's header row: a SKILL-style
+ * first heading or one of the STAR headings. Only such a first row is
+ * skipped, so a misspelt skill on the first line is still reported.
+ */
+function looksLikeHeaderRow(row) {
+  if (resolveSkillKey(row[0])) {
+    return false
+  }
+  return (
+    cellText(firstLineOf(row[0])).includes('skill') ||
+    row.slice(1, 5).some((cell) => HEADER_WORDS.has(cellText(cell)))
+  )
+}
+
+function isBlankRow(row) {
+  return !Array.isArray(row) || row.every((cell) => !sanitiseField(cell))
+}
+
+/** The cell names a skill exactly, rather than just containing one. */
+function namesSkillExactly(value) {
+  return SKILL_NAME_TO_KEY.has(normaliseSkillName(value))
+}
+
+/**
+ * Thrown when we cannot tell whether the file is separated by commas,
+ * semicolons or tabs. Guessing wrong would save evidence in the wrong
+ * columns, so the route asks the designer to save as CSV UTF-8 instead.
+ */
+export class CsvDelimiterError extends Error {
+  constructor() {
+    super('csv_delimiter_ambiguous')
+    this.name = 'CsvDelimiterError'
+  }
+}
+
+function scoreDelimiterParse(rows) {
+  const nonBlank = rows.filter((row) => !isBlankRow(row))
+  const exactSkillRows = nonBlank.filter((row) =>
+    namesSkillExactly(row[0])
+  ).length
+  const header =
+    nonBlank.length > 0 &&
+    nonBlank[0].length >= 5 &&
+    cellText(nonBlank[0][0]) === 'skill' &&
+    looksLikeHeaderRow(nonBlank[0])
+  return exactSkillRows + (header ? 1 : 0)
+}
+
+/**
+ * Reads the file with each delimiter spreadsheet tools use and keeps the
+ * one where rows start with an exact skill name (and the template header
+ * splits into its headings). Evidence often contains commas, so “parses
+ * without error” is not enough: a tab or semicolon file with commas in
+ * the evidence also parses as comma-separated, wrongly. A tie between
+ * readings that disagree is refused rather than guessed.
+ */
+function parseRowsWithDelimiterDetection(csvText) {
   const baseOptions = {
     relax_column_count: true,
     skip_empty_lines: false,
     bom: true
   }
-  const delimiterCandidates = [',', ';', '\t']
+  const candidates = []
   let lastError = null
-  for (const delimiter of delimiterCandidates) {
+  for (const delimiter of [',', ';', '\t']) {
     try {
-      return parse(csvText, { ...baseOptions, delimiter })
+      const rows = parse(csvText, { ...baseOptions, delimiter })
+      candidates.push({ rows, score: scoreDelimiterParse(rows) })
     } catch (err) {
       lastError = err
     }
   }
-  throw lastError || new Error('csv_parse_failed')
+  if (!candidates.length) {
+    throw lastError || new Error('csv_parse_failed')
+  }
+
+  const bestScore = Math.max(...candidates.map((c) => c.score))
+  if (bestScore === 0) {
+    // No exact skill names anywhere: keep the old order of preference so
+    // the route can explain what is wrong with the file
+    return candidates[0].rows
+  }
+  const best = candidates.filter((c) => c.score === bestScore)
+  const first = JSON.stringify(best[0].rows)
+  if (best.some((c) => JSON.stringify(c.rows) !== first)) {
+    throw new CsvDelimiterError()
+  }
+  return best[0].rows
 }
 
 const NUL_CHAR = String.fromCharCode(0)
@@ -267,62 +349,85 @@ function firstLineOf(value) {
  *
  * - `evidenceBySkill` / `importedSkillKeys` — only skills whose row has
  *   some evidence. Blank rows are left out so they never clear evidence
- *   already saved. A later duplicate row with evidence overwrites an
- *   earlier one.
+ *   already saved.
  * - `matchedSkillKeys` — every skill named in the file, blank or not.
- * - `unrecognisedRows` — `{ rowNumber, skillText }` for rows that have
- *   evidence but no recognised skill name (row numbers as a spreadsheet
- *   shows them). The first row is treated as the header when it does not
- *   name a skill.
+ * - Problems the route refuses the file for (row numbers as a
+ *   spreadsheet shows them):
+ *   - `unrecognisedRows` — `{ rowNumber, skillText }`: evidence but no
+ *     recognised skill name. The first row is skipped only when it looks
+ *     like the template header.
+ *   - `duplicateSkillRows` — `{ skillKey, rowNumbers }`: more than one
+ *     row with evidence for the same skill.
+ *   - `shortRows` — `{ rowNumber, skillKey }`: a recognised skill with
+ *     evidence but fewer than the five SKILL…RESULT columns.
+ *
+ * Throws CsvDelimiterError when the delimiter cannot be worked out.
  */
 export function parseGdadTemplateCsv(csvText) {
-  const rows = parseRowsWithDelimiterFallback(csvText)
+  const rows = parseRowsWithDelimiterDetection(csvText)
 
   const evidenceBySkill = {}
-  const importedSkillKeys = new Set()
   const matchedSkillKeys = new Set()
+  const evidenceRowsBySkill = new Map()
   const unrecognisedRows = []
+  const shortRows = []
   let seenFirstRow = false
 
   rows.forEach((row, index) => {
-    if (!Array.isArray(row) || row.every((cell) => !sanitiseField(cell))) {
+    if (isBlankRow(row)) {
       return
     }
+    const rowNumber = index + 1
     const isFirstRow = !seenFirstRow
     seenFirstRow = true
-    if (row.length < 5) {
+    if (isFirstRow && looksLikeHeaderRow(row)) {
       return
     }
 
-    const situation = sanitiseField(row[1])
-    const task = sanitiseField(row[2])
-    const action = sanitiseField(row[3])
-    const result = sanitiseField(row[4])
-    const evidence = buildStarEvidence(situation, task, action, result)
-
+    // The STAR columns; a SCORES value on its own is not evidence
+    const hasContent = row.slice(1, 5).some((cell) => sanitiseField(cell))
     const skillKey = resolveSkillKey(row[0])
     if (!skillKey) {
-      if (evidence && !isFirstRow) {
-        unrecognisedRows.push({
-          rowNumber: index + 1,
-          skillText: firstLineOf(row[0])
-        })
+      if (hasContent) {
+        unrecognisedRows.push({ rowNumber, skillText: firstLineOf(row[0]) })
+      }
+      return
+    }
+    matchedSkillKeys.add(skillKey)
+
+    if (row.length < 5) {
+      if (hasContent) {
+        shortRows.push({ rowNumber, skillKey })
       }
       return
     }
 
-    matchedSkillKeys.add(skillKey)
-    if (evidence) {
-      evidenceBySkill[skillKey] = evidence
-      importedSkillKeys.add(skillKey)
+    const evidence = buildStarEvidence(
+      sanitiseField(row[1]),
+      sanitiseField(row[2]),
+      sanitiseField(row[3]),
+      sanitiseField(row[4])
+    )
+    if (!evidence) {
+      return
     }
+    evidenceBySkill[skillKey] = evidence
+    const skillRows = evidenceRowsBySkill.get(skillKey) ?? []
+    skillRows.push(rowNumber)
+    evidenceRowsBySkill.set(skillKey, skillRows)
   })
+
+  const duplicateSkillRows = Array.from(evidenceRowsBySkill.entries())
+    .filter(([, rowNumbers]) => rowNumbers.length > 1)
+    .map(([skillKey, rowNumbers]) => ({ skillKey, rowNumbers }))
 
   return {
     evidenceBySkill,
-    importedSkillKeys: Array.from(importedSkillKeys),
+    importedSkillKeys: Object.keys(evidenceBySkill),
     matchedSkillKeys: Array.from(matchedSkillKeys),
-    unrecognisedRows
+    unrecognisedRows,
+    duplicateSkillRows,
+    shortRows
   }
 }
 

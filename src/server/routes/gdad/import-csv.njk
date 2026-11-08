@@ -10,7 +10,7 @@
       {% if error %}
         {{ govukErrorSummary({
           titleText: "There is a problem",
-          errorList: [{ text: error, href: "#evidenceCsv" }]
+          errorList: errorList
         }) }}
       {% endif %}
 
