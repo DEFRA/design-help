@@ -65,7 +65,6 @@ const ROLE_TO_FRAMEWORK_TRACK = {
   'Senior Service Designer': 'senior_service_designer',
   'Principal Service Designer': 'lead_service_designer',
   'Design Manager': 'senior_service_designer',
-  'Senior Resource Manager': 'lead_service_designer',
   'Head of Design': 'head_of_service_design'
 }
 

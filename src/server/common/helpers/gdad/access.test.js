@@ -69,6 +69,30 @@ describe('#getGdadReviewerRole', () => {
   })
 })
 
+describe('#canAccessGdadReviewSection and GDaD reports', () => {
+  test('A line manager with GDaD reports gets My team', () => {
+    expect(
+      canAccessGdadReviewSection({ ...lineManager, hasGdadReports: true })
+    ).toBe(true)
+  })
+
+  test('A line manager with no GDaD reports gets no My team', () => {
+    expect(
+      canAccessGdadReviewSection({ ...lineManager, hasGdadReports: false })
+    ).toBe(false)
+  })
+
+  test('If the check is missing, a line manager keeps My team as before', () => {
+    expect(canAccessGdadReviewSection(lineManager)).toBe(true)
+  })
+
+  test('The Head of Design always gets My team', () => {
+    expect(
+      canAccessGdadReviewSection({ ...headOfDesign, hasGdadReports: false })
+    ).toBe(true)
+  })
+})
+
 describe('#canReviewGdadEvidenceForTarget', () => {
   test('Non-admin line manager may review only their own reports', () => {
     expect(canReviewGdadEvidenceForTarget(lineManager, ownReport)).toBe(true)

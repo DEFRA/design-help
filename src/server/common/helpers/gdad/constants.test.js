@@ -41,11 +41,8 @@ describe('#Design Manager grade', () => {
     ).toMatchObject({ label: 'Expert' })
   })
 
-  test('Should keep Principal Service Designer and Senior Resource Manager on the lead (G6) track', () => {
+  test('Should keep Principal Service Designer on the lead (G6) track', () => {
     expect(getFrameworkTrackKeyForJobTitle('Principal Service Designer')).toBe(
-      'lead_service_designer'
-    )
-    expect(getFrameworkTrackKeyForJobTitle('Senior Resource Manager')).toBe(
       'lead_service_designer'
     )
     expect(getFrameworkTrackKeyForJobTitle('Head of Design')).toBe(

@@ -1,4 +1,5 @@
-import { getGdadReviewerRole } from '#/server/common/helpers/gdad/access.js'
+import { canAccessGdadReviewSection } from '#/server/common/helpers/gdad/access.js'
+import { isAccessibilityOnlyRole } from '#/server/common/helpers/gdad/constants.js'
 
 function startsWithAny(path, prefixes) {
   return prefixes.some(
@@ -21,7 +22,8 @@ const ITEMS = [
   {
     text: 'GDaD',
     href: '/my-gdad-evidence',
-    section: ['/my-gdad-evidence']
+    section: ['/my-gdad-evidence'],
+    gdadPathOnly: true
   },
   {
     text: 'Find help',
@@ -37,17 +39,20 @@ const ITEMS = [
 
 export function buildNavigation(request, user = null) {
   const path = request?.path ?? ''
-  const isReviewer = getGdadReviewerRole(user) !== 'none'
-  return ITEMS.filter((item) => !item.reviewersOnly || isReviewer).map(
-    (item) => {
-      const current = startsWithAny(path, item.section)
-      return {
-        text: item.text,
-        href: item.href,
-        current,
-        // "page" on the item's own page, "true" elsewhere in its section
-        ariaCurrent: current ? (path === item.href ? 'page' : 'true') : null
-      }
+  const isReviewer = canAccessGdadReviewSection(user)
+  // A missing job title keeps GDaD in the menu, as before
+  const onGdadPath = !isAccessibilityOnlyRole(user?.role)
+  return ITEMS.filter(
+    (item) =>
+      (!item.reviewersOnly || isReviewer) && (!item.gdadPathOnly || onGdadPath)
+  ).map((item) => {
+    const current = startsWithAny(path, item.section)
+    return {
+      text: item.text,
+      href: item.href,
+      current,
+      // "page" on the item's own page, "true" elsewhere in its section
+      ariaCurrent: current ? (path === item.href ? 'page' : 'true') : null
     }
-  )
+  })
 }

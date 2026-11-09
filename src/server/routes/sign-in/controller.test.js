@@ -9,7 +9,7 @@ import { sendMagicLinkEmail } from '#/server/common/helpers/notify.js'
  * backend are all faked, so nobody is really signed in and no live data is
  * touched.
  */
-const mockState = { user: null, person: null }
+const mockState = { user: null, person: null, people: [] }
 
 vi.mock(
   '#/server/common/helpers/auth/user-session.js',
@@ -30,6 +30,7 @@ vi.mock(
 vi.mock('#/server/common/helpers/backend-api.js', () => ({
   backendApi: {
     getPersonByEmail: async () => mockState.person,
+    listPeople: async () => mockState.people,
     activatePerson: vi.fn()
   }
 }))
@@ -69,12 +70,17 @@ describe('#signInRoutes landing', () => {
 
   beforeEach(() => {
     mockState.user = null
+    mockState.people = []
   })
 
   test.each([
     ['a designer', {}, '/my-gdad-evidence'],
     ['an admin who is not a manager', { isAdmin: true }, '/my-gdad-evidence'],
-    ['a line manager', { isLineManager: true }, '/my-team']
+    [
+      'a line manager with nobody on the GDaD path to review',
+      { isLineManager: true },
+      '/my-gdad-evidence'
+    ]
   ])(
     'After following the sign-in link, %s lands on %s',
     async (_label, flags, location) => {
@@ -87,6 +93,57 @@ describe('#signInRoutes landing', () => {
       expect(headers.location).toBe(location)
     }
   )
+
+  describe('Job titles not on the GDaD path', () => {
+    const managerId = 'a00000000000000000000001'
+    const report = (role) => ({
+      id: 'b00000000000000000000001',
+      name: 'A Report',
+      role,
+      managerId
+    })
+
+    test.each([
+      [
+        'a resource manager with designers',
+        { role: 'Senior Resource Manager', isLineManager: true },
+        [report('Service Designer')],
+        '/my-team'
+      ],
+      [
+        'an accessibility manager with only accessibility reports',
+        {
+          role: 'Senior Accessibility Specialist (Grade 7)',
+          isLineManager: true
+        },
+        [report('Accessibility Specialist (SEO)')],
+        '/find-help'
+      ],
+      [
+        'an accessibility specialist',
+        { role: 'Accessibility Specialist (SEO)' },
+        [],
+        '/find-help'
+      ],
+      [
+        'a designer who line manages designers',
+        { isLineManager: true },
+        [report('Interaction Designer')],
+        '/my-team'
+      ]
+    ])(
+      'After following the sign-in link, %s lands on %s',
+      async (_label, flags, people, location) => {
+        mockState.person = person(flags)
+        mockState.people = people
+        const { headers } = await server.inject({
+          method: 'GET',
+          url: '/sign-in/verify?token=good-token'
+        })
+        expect(headers.location).toBe(location)
+      }
+    )
+  })
 
   test('An expired link does not sign anyone in', async () => {
     mockState.person = person()

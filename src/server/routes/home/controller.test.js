@@ -53,7 +53,20 @@ const users = {
     isAdmin: true,
     isHeadOfDesignSuperUser: true
   }),
-  plainAdmin: sessionUser({ isAdmin: true })
+  plainAdmin: sessionUser({ isAdmin: true }),
+  resourceManager: sessionUser({
+    role: 'Senior Resource Manager',
+    isLineManager: true,
+    hasGdadReports: true
+  }),
+  accessibilityManager: sessionUser({
+    role: 'Senior Accessibility Specialist (Grade 7)',
+    isLineManager: true,
+    hasGdadReports: false
+  }),
+  accessibilitySpecialist: sessionUser({
+    role: 'Accessibility Specialist (SEO)'
+  })
 }
 
 function menuLinks(html) {
@@ -113,7 +126,10 @@ describe('#homeController', () => {
       ['designer', '/my-gdad-evidence'],
       ['plainAdmin', '/my-gdad-evidence'],
       ['lineManager', '/my-team'],
-      ['headOfDesign', '/my-team']
+      ['headOfDesign', '/my-team'],
+      ['resourceManager', '/my-team'],
+      ['accessibilityManager', '/find-help'],
+      ['accessibilitySpecialist', '/find-help']
     ])('%s goes to %s', async (who, location) => {
       const { statusCode, headers } = await get(users[who], '/')
       expect(statusCode).toBe(302)
@@ -159,6 +175,24 @@ describe('#homeController', () => {
       expect(menuLinks(result)).not.toContain('/my-team')
       expect(result).toContain('href="/admin/users"')
     })
+
+    test('Resource manager with designers: My team, no GDaD', async () => {
+      const { result } = await get(users.resourceManager, '/find-help')
+      expect(menuLinks(result)).toEqual([
+        '/my-team',
+        '/find-help',
+        '/my-profile'
+      ])
+    })
+
+    test.each(['accessibilityManager', 'accessibilitySpecialist'])(
+      '%s: no My team and no GDaD',
+      async (who) => {
+        const { result } = await get(users[who], '/find-help')
+        expect(menuLinks(result)).toEqual(['/find-help', '/my-profile'])
+        expect(result).not.toContain('href="/my-gdad-evidence"')
+      }
+    )
 
     test('Marks the current item', async () => {
       const { result } = await get(users.designer, '/find-help')

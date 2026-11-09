@@ -22,8 +22,20 @@ export function getGdadReviewerRole(user) {
   return 'none'
 }
 
+/**
+ * Who gets My team: the Head of Design, and line managers with at least one
+ * report on the GDaD path. A line manager who only manages people outside
+ * the GDaD path (for example accessibility specialists) has nothing to
+ * review, so gets no My team. `hasGdadReports` is worked out when the
+ * session is refreshed; if it is missing we keep the old behaviour and
+ * let the line manager in.
+ */
 export function canAccessGdadReviewSection(user) {
-  return getGdadReviewerRole(user) !== 'none'
+  const role = getGdadReviewerRole(user)
+  if (role === 'hod') {
+    return true
+  }
+  return role === 'line_manager' && user.hasGdadReports !== false
 }
 
 /**

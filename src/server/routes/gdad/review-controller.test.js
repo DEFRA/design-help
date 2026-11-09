@@ -351,6 +351,44 @@ describe('#gdadReviewRoutes access', () => {
     })
   })
 
+  describe('Job titles not on the GDaD path', () => {
+    const resourceManager = sessionUser(ids.otherManager, {
+      role: 'Senior Resource Manager',
+      isLineManager: true,
+      hasGdadReports: true
+    })
+    const accessibilityManager = sessionUser(ids.manager, {
+      role: 'Senior Accessibility Specialist (Grade 7)',
+      isLineManager: true,
+      hasGdadReports: false
+    })
+
+    test('A resource manager sees their designers on My team, with no GDaD link', async () => {
+      const { statusCode, result } = await get(resourceManager, '/my-team')
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toContain('Bea Other-Report')
+      expect(result).not.toContain('Ada Own-Report')
+      expect(result).not.toContain('href="/my-gdad-evidence"')
+    })
+
+    test('A resource manager can open their designer’s evidence', async () => {
+      expect(
+        (await get(resourceManager, personUrl(ids.otherReport))).statusCode
+      ).toBe(statusCodes.ok)
+      expect(
+        (await get(resourceManager, skillUrl(ids.otherReport))).statusCode
+      ).toBe(statusCodes.ok)
+    })
+
+    test('A manager with no GDaD reports is refused My team and the CSV', async () => {
+      for (const url of ['/my-team', '/review/gdad-evidence/export.csv']) {
+        expect((await get(accessibilityManager, url)).statusCode).toBe(
+          statusCodes.forbidden
+        )
+      }
+    })
+  })
+
   describe('Old review list address', () => {
     test('Redirects to My team', async () => {
       const { statusCode, headers } = await get(

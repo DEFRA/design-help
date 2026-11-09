@@ -85,4 +85,48 @@ describe('#buildNavigation', () => {
       buildNavigation({ path: '/about' }, lineManager).some((i) => i.current)
     ).toBe(false)
   })
+
+  describe('Job titles not on the GDaD path', () => {
+    test('A resource manager with GDaD reports gets My team but no GDaD', () => {
+      const user = {
+        ...lineManager,
+        role: 'Senior Resource Manager',
+        hasGdadReports: true
+      }
+      expect(texts(buildNavigation({ path: '/' }, user))).toEqual([
+        'My team',
+        'Find help',
+        'My profile'
+      ])
+    })
+
+    test('An accessibility manager with only accessibility reports gets neither', () => {
+      const user = {
+        ...lineManager,
+        role: 'Senior Accessibility Specialist (Grade 7)',
+        hasGdadReports: false
+      }
+      expect(texts(buildNavigation({ path: '/' }, user))).toEqual([
+        'Find help',
+        'My profile'
+      ])
+    })
+
+    test('An accessibility specialist gets no GDaD', () => {
+      const user = { ...designer, role: 'Accessibility Specialist (SEO)' }
+      expect(texts(buildNavigation({ path: '/' }, user))).toEqual([
+        'Find help',
+        'My profile'
+      ])
+    })
+
+    test('A designer, or a session with no job title, still gets GDaD', () => {
+      for (const user of [
+        { ...designer, role: 'Service Designer' },
+        designer
+      ]) {
+        expect(texts(buildNavigation({ path: '/' }, user))).toContain('GDaD')
+      }
+    })
+  })
 })

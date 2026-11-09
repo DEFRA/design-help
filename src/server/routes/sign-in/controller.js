@@ -1,6 +1,6 @@
 import { config } from '#/config/config.js'
 import { backendApi } from '#/server/common/helpers/backend-api.js'
-import { buildSessionUser } from '#/server/common/helpers/auth/user-session.js'
+import { loadSessionUser } from '#/server/common/helpers/auth/user-session.js'
 import { sendMagicLinkEmail } from '#/server/common/helpers/notify.js'
 import { createLogger } from '#/server/common/helpers/logging/logger.js'
 import { isSignInAvailable } from '#/server/common/helpers/auth/sign-in-availability.js'
@@ -121,7 +121,7 @@ export const signInRoutes = [
         await backendApi.activatePerson(person.id)
       }
 
-      const sessionUser = buildSessionUser(person)
+      const sessionUser = await loadSessionUser(person)
       request.yar.set('user', sessionUser)
       return h.redirect(getLandingPath(sessionUser))
     }
