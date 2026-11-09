@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 import {
   canAccessGdadReviewSection,
   canReviewGdadEvidenceForTarget,
+  canScoreGdadEvidenceForTarget,
   getGdadReviewerRole,
   listReviewablePeople
 } from './access.js'
@@ -130,6 +131,27 @@ describe('#canReviewGdadEvidenceForTarget', () => {
   })
 })
 
+describe('#canScoreGdadEvidenceForTarget', () => {
+  test('Only the Head of Design may score, for anyone', () => {
+    for (const target of [ownReport, otherReport, unallocated]) {
+      expect(canScoreGdadEvidenceForTarget(headOfDesign, target)).toBe(true)
+    }
+  })
+
+  test('A line manager may see their own report but not score them', () => {
+    expect(canReviewGdadEvidenceForTarget(lineManager, ownReport)).toBe(true)
+    expect(canScoreGdadEvidenceForTarget(lineManager, ownReport)).toBe(false)
+    const report = { ...ownReport, managerId: 'alm' }
+    expect(canScoreGdadEvidenceForTarget(adminLineManager, report)).toBe(false)
+  })
+
+  test('Nobody else may score', () => {
+    for (const user of [plainAdmin, designer, null]) {
+      expect(canScoreGdadEvidenceForTarget(user, unallocated)).toBe(false)
+    }
+  })
+})
+
 describe('#listReviewablePeople', () => {
   const everyone = [
     ownReport,
@@ -152,6 +174,13 @@ describe('#listReviewablePeople', () => {
   test('Head of Design sees everyone named except themselves', async () => {
     const people = await listReviewablePeople(headOfDesign)
     expect(people.map((p) => p.id)).toEqual(['p1', 'p2', 'p3', 'lm'])
+  })
+
+  test('Uses a list that has already been loaded, without asking the backend', async () => {
+    mockListPeople.mockClear()
+    const people = await listReviewablePeople(lineManager, everyone)
+    expect(people.map((p) => p.id)).toEqual(['p1'])
+    expect(mockListPeople).not.toHaveBeenCalled()
   })
 
   test('Plain admin sees nobody', async () => {

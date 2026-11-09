@@ -391,6 +391,27 @@ describe('#buildAdminExportCsv', () => {
     )
   })
 
+  test('Should add a Line manager column at the end only when asked', () => {
+    const csv = buildAdminExportCsv(
+      [
+        {
+          name: 'Has Manager',
+          role: 'Design Manager',
+          lineManager: 'Pat Manager',
+          ...fullScores
+        },
+        { name: 'No Manager', role: 'Service Designer', lineManager: null }
+      ],
+      { includeLineManager: true }
+    )
+    const [header, first, second] = csv.split('\n')
+    expect(header.endsWith(',Capability Level Change,Line manager')).toBe(true)
+    expect(first).toBe(
+      'Has Manager,Design Manager,G7,3,3,3,2,2,3,3,17,5,,,Pat Manager'
+    )
+    expect(second).toBe('No Manager,Service Designer,SEO,,,,,,,,,,,,')
+  })
+
   test('Should export Design Manager at G7', () => {
     const csv = buildAdminExportCsv([
       { name: 'Test Manager', role: 'Design Manager', ...fullScores }

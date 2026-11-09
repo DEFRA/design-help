@@ -36,7 +36,7 @@ This is the frontend service (Hapi + Nunjucks + GOV.UK Frontend, sessions in Red
 - **Sign in**: passwordless. An allow-listed email requests a single-use, 15-minute sign-in link sent via GOV.UK Notify. In local development (no Notify key) the link is logged to the console instead. Access is managed by admins on the People and access page.
 - **Directory**: browse/search team members, profile pages, offers (what people can help with) and requests (what people want help with), long-term helping with availability.
 - **Admin**: people and access management, add-profile wizard, line-manager identification and allocations (Head of Design only), admin grant/revoke (Head of Design only; bootstrap admins from `ADMIN_EMAILS` cannot be revoked).
-- **GDaD**: designers keep STAR evidence for the seven DDaT design skills (typed or CSV import); line managers (no admin access needed) review and score their own team, and only the Head of Design sees designers with no manager allocated; capability banding from the best six scores.
+- **GDaD**: designers keep STAR evidence for the seven DDaT design skills (typed or CSV import); line managers (no admin access needed) can see their own team's evidence and scores; only the Head of Design gives scores, and only the Head of Design sees designers with no manager allocated; capability banding from the best six scores.
 
 ## Frontend-only local development (live dev data)
 

@@ -556,10 +556,13 @@ function bestSixTotal(scores) {
 
 /**
  * Reviewer score export. `rows` is `[{ name, role, <skillKey>: 1|2|3|null }]`.
- * The last two columns (Score Change, Capability Level Change) are left
- * blank for manual completion, matching the reference Export.csv.
+ * Score Change and Capability Level Change are left blank for manual
+ * completion, matching the reference Export.csv.
+ * With `includeLineManager` (the Head of Design's whole-team export) a
+ * "Line manager" column is added at the very end, so the reference columns
+ * keep their positions; each row then needs `lineManager`.
  */
-export function buildAdminExportCsv(rows) {
+export function buildAdminExportCsv(rows, { includeLineManager = false } = {}) {
   const header = [
     'Name',
     'Role',
@@ -568,7 +571,8 @@ export function buildAdminExportCsv(rows) {
     'Total',
     'Capability Level',
     'Score Change',
-    'Capability Level Change'
+    'Capability Level Change',
+    ...(includeLineManager ? ['Line manager'] : [])
   ]
   const out = [header.map(csvEscape).join(',')]
   for (const row of rows) {
@@ -586,7 +590,8 @@ export function buildAdminExportCsv(rows) {
         ? capabilityBand.band.level
         : '',
       '',
-      ''
+      '',
+      ...(includeLineManager ? [row.lineManager || ''] : [])
     ]
     out.push(line.map(csvEscape).join(','))
   }

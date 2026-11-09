@@ -5,28 +5,49 @@
     <div class="govuk-grid-column-full">
       <h1 class="govuk-heading-xl">My team</h1>
 
-      {% if gdadReviewerRole == 'hod' %}
+      {% if view %}
         <p class="govuk-body">
-          As Head of Design you see every designer, including anyone who does not have a responsible manager yet.
+          As Head of Design you see every designer, including anyone who does not have a responsible manager yet, and you give every official score.
         </p>
+
+        <nav class="design-help-view-nav govuk-!-margin-bottom-6" aria-label="My team views">
+          <ul class="design-help-view-nav__list">
+            <li class="design-help-view-nav__item">
+              <a class="govuk-link govuk-link--no-visited-state{% if view == 'whole' %} govuk-!-font-weight-bold{% endif %}" href="/my-team?view=whole"{% if view == 'whole' %} aria-current="page"{% endif %}>Whole team ({{ wholeTeamCount }})</a>
+            </li>
+            <li class="design-help-view-nav__item">
+              <a class="govuk-link govuk-link--no-visited-state{% if view == 'direct' %} govuk-!-font-weight-bold{% endif %}" href="/my-team?view=direct"{% if view == 'direct' %} aria-current="page"{% endif %}>My direct reports ({{ directReportsCount }})</a>
+            </li>
+          </ul>
+        </nav>
+
+        <h2 class="govuk-heading-l">{{ "Whole team" if view == 'whole' else "My direct reports" }}</h2>
       {% else %}
         <p class="govuk-body">
-          These are the designers you are the responsible manager for. Open a designer to read their GDaD evidence and score it.
+          These are the designers you are the responsible manager for. Open a designer to read their GDaD evidence and see their scores and capability level, so you can plan their next steps together.
         </p>
+        <p class="govuk-body">Scores are given by the Head of Design.</p>
       {% endif %}
 
       {% if not rows.length %}
-        {% if gdadReviewerRole == 'hod' %}
+        {% if view == 'whole' %}
           <p class="govuk-body">No designer profiles use a GDaD job title yet.</p>
+        {% elif view == 'direct' %}
+          <p class="govuk-body">No designers have you as their responsible manager.</p>
         {% else %}
           <p class="govuk-body">No designers are allocated to you yet.</p>
           <p class="govuk-body">Ask the Head of Design to set you as the responsible manager for your designers.</p>
         {% endif %}
       {% else %}
-        {% if attentionCount %}
+        {% if attentionCount and canScore %}
           <p class="govuk-body">
             <strong>{{ attentionCount }} {{ "designer needs" if attentionCount == 1 else "designers need" }} your attention</strong>
             — they have evidence that has not been scored yet, or that has changed since it was scored. They are shown first.
+          </p>
+        {% elif attentionCount %}
+          <p class="govuk-body">
+            <strong>{{ attentionCount }} {{ "designer has" if attentionCount == 1 else "designers have" }} evidence waiting for a score</strong>
+            — it has not been scored yet, or has changed since it was last scored. The Head of Design will score it. They are shown first.
           </p>
         {% endif %}
 
@@ -37,6 +58,9 @@
               <tr class="govuk-table__row">
                 <th scope="col" class="govuk-table__header">Name</th>
                 <th scope="col" class="govuk-table__header">Job title</th>
+                {% if showLineManagerColumn %}
+                  <th scope="col" class="govuk-table__header">Line manager</th>
+                {% endif %}
                 <th scope="col" class="govuk-table__header">Skills with evidence</th>
                 <th scope="col" class="govuk-table__header">Skills scored</th>
                 <th scope="col" class="govuk-table__header">Capability level</th>
@@ -51,6 +75,9 @@
                     <a class="govuk-link govuk-link--no-visited-state" href="/review/gdad-evidence/{{ row.id }}">{{ row.name }}</a>
                   </th>
                   <td class="govuk-table__cell">{{ row.role }}</td>
+                  {% if showLineManagerColumn %}
+                    <td class="govuk-table__cell">{{ row.lineManagerName }}</td>
+                  {% endif %}
                   <td class="govuk-table__cell">{{ row.skillsWithEvidence }} of {{ skillCount }}</td>
                   <td class="govuk-table__cell">{{ row.skillsScored }} of {{ skillCount }}</td>
                   <td class="govuk-table__cell">
@@ -62,9 +89,12 @@
                   </td>
                   <td class="govuk-table__cell">{{ row.lastEvidenceLabel or "None yet" }}</td>
                   <td class="govuk-table__cell">
-                    {% if row.needsAttention %}
+                    {% if row.needsAttention and canScore %}
                       <strong class="govuk-tag govuk-tag--yellow">Needs your attention</strong>
                       <span class="govuk-hint govuk-body-s govuk-!-display-block govuk-!-margin-top-1 govuk-!-margin-bottom-0">{{ row.skillsNeedingScoring }} {{ "skill" if row.skillsNeedingScoring == 1 else "skills" }} to score</span>
+                    {% elif row.needsAttention %}
+                      <strong class="govuk-tag govuk-tag--yellow">Waiting for a score</strong>
+                      <span class="govuk-hint govuk-body-s govuk-!-display-block govuk-!-margin-top-1 govuk-!-margin-bottom-0">{{ row.skillsNeedingScoring }} {{ "skill" if row.skillsNeedingScoring == 1 else "skills" }} new or updated since last scored</span>
                     {% elif row.skillsWithEvidence %}
                       <span class="govuk-hint">Up to date</span>
                     {% else %}
@@ -79,7 +109,7 @@
       {% endif %}
 
       <p class="govuk-body">
-        <a class="govuk-link" href="/review/gdad-evidence/export.csv">Download scores for {{ "everyone" if gdadReviewerRole == 'hod' else "your team" }} (CSV)</a>
+        <a class="govuk-link" href="/review/gdad-evidence/export.csv">Download scores for {{ "everyone" if gdadReviewerRole == 'hod' else "your team" }} (CSV)</a>{% if gdadReviewerRole == 'hod' %}, including each person’s line manager{% endif %}.
       </p>
       <p class="govuk-body">
         This file contains personal information. Store it somewhere only the right people can see it, and delete it when you no longer need it.

@@ -39,6 +39,7 @@ vi.mock('#/server/common/helpers/backend-api.js', () => ({
 }))
 
 const ids = {
+  hod: 'a00000000000000000000001',
   manager: 'a00000000000000000000002',
   designer: 'b00000000000000000000001'
 }
@@ -57,6 +58,12 @@ function sessionUser(id, flags = {}) {
 }
 
 const users = {
+  // Only the Head of Design scores, so the score controls are checked as them
+  hod: sessionUser(ids.hod, {
+    role: 'Head of Design',
+    isAdmin: true,
+    isHeadOfDesignSuperUser: true
+  }),
   manager: sessionUser(ids.manager, { isLineManager: true }),
   designer: sessionUser(ids.designer)
 }
@@ -156,7 +163,7 @@ describe('#gdad accessibility', () => {
     const url = `/review/gdad-evidence/${ids.designer}/design_communication`
 
     test('Labels the control "Score" when nothing is scored yet', async () => {
-      const { result } = await get(users.manager, url)
+      const { result } = await get(users.hod, url)
       expect(result).toMatch(
         /<label class="govuk-label govuk-label--m" for="score-design_communication">\s*Score\s*<\/label>/
       )
@@ -167,14 +174,14 @@ describe('#gdad accessibility', () => {
         { ...designer, gdad: { design_communication: { officialScore: 2 } } },
         people[1]
       ]
-      const { result } = await get(users.manager, url)
+      const { result } = await get(users.hod, url)
       expect(result).toMatch(
         /for="score-design_communication">\s*Change score\s*<\/label>/
       )
     })
 
     test('Shows an invalid score error next to the select', async () => {
-      const { result } = await get(users.manager, `${url}?err=invalid`)
+      const { result } = await get(users.hod, `${url}?err=invalid`)
       expect(pageTitle(result)).toMatch(/^Error: /)
       expect(result).toContain('href="#score-design_communication"')
       expect(result).toContain('id="score-design_communication-error"')
@@ -190,7 +197,7 @@ describe('#gdad accessibility', () => {
     const url = `/review/gdad-evidence/${ids.designer}`
 
     test('An invalid score sends you back naming the skill', async () => {
-      const { statusCode, headers } = await post(users.manager, url, {
+      const { statusCode, headers } = await post(users.hod, url, {
         score_designing_together: '9'
       })
       expect(statusCode).toBe(302)
@@ -201,7 +208,7 @@ describe('#gdad accessibility', () => {
 
     test('Shows the error at the top and next to that skill’s score', async () => {
       const { result } = await get(
-        users.manager,
+        users.hod,
         `${url}?err=invalid&skill=designing_together`
       )
       expect(pageTitle(result)).toMatch(/^Error: /)
@@ -220,7 +227,7 @@ describe('#gdad accessibility', () => {
     })
 
     test('Falls back to the first score when the skill is unknown', async () => {
-      const { result } = await get(users.manager, `${url}?err=invalid`)
+      const { result } = await get(users.hod, `${url}?err=invalid`)
       expect(result).toContain('href="#score-design_communication"')
       expect(openingTag(result, 'score-design_communication')).toContain(
         'govuk-select--error'
@@ -245,6 +252,21 @@ describe('#gdad accessibility', () => {
       )
       expect(result).toContain(
         'This file contains personal information. Store it somewhere only the right people can see it, and delete it when you no longer need it.'
+      )
+    })
+  })
+
+  describe('My team views (Head of Design)', () => {
+    test('Are a labelled navigation that marks the current view', async () => {
+      const { result } = await get(users.hod, '/my-team?view=direct')
+      expect(result).toContain('<nav class="design-help-view-nav')
+      expect(result).toContain('aria-label="My team views"')
+      expect(result).toMatch(
+        /href="\/my-team\?view=direct" aria-current="page"/
+      )
+      expect(result).not.toMatch(/view=whole" aria-current/)
+      expect(result).toContain(
+        '<h2 class="govuk-heading-l">My direct reports</h2>'
       )
     })
   })

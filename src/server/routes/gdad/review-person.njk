@@ -7,7 +7,7 @@
 
       <a class="govuk-back-link" href="/my-team">Back to My team</a>
 
-      {% if error %}
+      {% if error and canEditScores %}
         {{ govukErrorSummary({
           titleText: "There is a problem",
           errorList: [{ text: error, href: "#score-" + errorSkillKey }]
@@ -17,7 +17,7 @@
       <span class="govuk-caption-l">{{ targetName }} · {{ targetRole }}</span>
       <h1 class="govuk-heading-xl">GDaD evidence</h1>
 
-      {% if justSaved %}
+      {% if justSaved and canEditScores %}
         {{ govukNotificationBanner({
           type: "success",
           text: "Scores saved."
@@ -33,31 +33,37 @@
 
       {{ gdadCapabilityPanel(capabilityBand) }}
 
-      {% if not canEditScores %}
-        {{ govukInsetText({
-          text: "You can review evidence, but only Head of Design can save official scores."
-        }) }}
-      {% endif %}
+      {% if canEditScores %}
+        <form method="post" action="/review/gdad-evidence/{{ targetPersonId }}" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          {{ gdadSkillsTable({
+            skillRows: skillRows,
+            skillHref: "/review/gdad-evidence/" + targetPersonId + "/",
+            scoreControls: true,
+            errorSkillKey: errorSkillKey,
+            errorText: error
+          }) }}
 
-      <form method="post" action="/review/gdad-evidence/{{ targetPersonId }}" novalidate>
-        <input type="hidden" name="crumb" value="{{ crumb }}">
+          {{ govukButton({ text: "Save scores" }) }}
+        </form>
+
+        <p class="govuk-body">
+          Open a skill to read the full evidence and score it.
+        </p>
+      {% else %}
+        {{ govukInsetText({
+          text: "Scores are given by the Head of Design. You can see them here to plan next steps with " + targetName + "."
+        }) }}
+
         {{ gdadSkillsTable({
           skillRows: skillRows,
-          skillHref: "/review/gdad-evidence/" + targetPersonId + "/",
-          scoreControls: true,
-          disabled: not canEditScores,
-          errorSkillKey: errorSkillKey,
-          errorText: error
+          skillHref: "/review/gdad-evidence/" + targetPersonId + "/"
         }) }}
 
-        {% if canEditScores %}
-          {{ govukButton({ text: "Save scores" }) }}
-        {% endif %}
-      </form>
-
-      <p class="govuk-body">
-        Open a skill to read the full evidence and score it.
-      </p>
+        <p class="govuk-body">
+          Open a skill to read the full evidence.
+        </p>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

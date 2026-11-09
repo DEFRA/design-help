@@ -253,8 +253,10 @@ $design-help-border: #b1b4b6;
   margin-bottom: 16px;
 }
 
-// Admin tools: horizontal text links at top of admin content
-.design-help-admin-tools__list {
+// Admin tools: horizontal text links at top of admin content.
+// My team views (Head of Design) use the same look.
+.design-help-admin-tools__list,
+.design-help-view-nav__list {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -264,7 +266,8 @@ $design-help-border: #b1b4b6;
   padding: 0;
 }
 
-.design-help-admin-tools__item {
+.design-help-admin-tools__item,
+.design-help-view-nav__item {
   margin: 0;
 }
 

@@ -3,7 +3,8 @@
   and the manager's view of them (/review/gdad-evidence/...) are built from
   these so both show the same skills, in the same order, with the same words
   — a manager and designer on a call can say "the third skill down" and mean
-  the same thing. The manager's view adds scoring controls; the designer's
+  the same thing. The Head of Design's view adds scoring controls (line
+  managers see the same as the designer, without editing); the designer's
   view adds evidence editing.
 #}
 
@@ -27,7 +28,7 @@
 
 {% macro gdadScoringExplainer() %}
   <p class="govuk-body-s govuk-!-margin-bottom-4">
-    <strong>Official scores</strong> (1 to 3) are set by the designer’s line manager or the Head of Design. For each skill, <strong>1</strong> means one skill level below expected, <strong>2</strong> means at the expected skill level, and <strong>3</strong> means one skill level above expected.
+    <strong>Official scores</strong> (1 to 3) are given by the Head of Design. For each skill, <strong>1</strong> means one skill level below expected, <strong>2</strong> means at the expected skill level, and <strong>3</strong> means one skill level above expected.
     The overall <strong>capability level</strong> is worked out from the <strong>best six scores</strong> across the seven skills.
   </p>
 {% endmacro %}
@@ -56,7 +57,7 @@
 {#
   params.skillRows    — from buildSkillRows (always the 7 skills in framework order)
   params.skillHref    — link prefix for each skill page; the skill key is appended
-  params.scoreControls — true on the manager's view: adds a "Change score" column
+  params.scoreControls — true on the Head of Design's view: adds a "Change score" column
   params.errorSkillKey / params.errorText — show an error next to that skill's score
 #}
 {% macro gdadSkillsTable(params) %}
@@ -122,7 +123,6 @@
                     { value: "2", text: "2 — At standard", selected: skill.officialScore == 2 },
                     { value: "3", text: "3 — Above standard", selected: skill.officialScore == 3 }
                   ],
-                  disabled: params.disabled,
                   formGroup: { classes: "govuk-!-margin-bottom-0" },
                   errorMessage: { text: params.errorText } if params.errorText and params.errorSkillKey == skill.key
                 }) }}

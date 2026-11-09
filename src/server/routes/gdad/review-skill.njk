@@ -7,14 +7,14 @@
 
       <a class="govuk-back-link" href="/review/gdad-evidence/{{ targetPersonId }}">Back to {{ targetName }}’s GDaD evidence</a>
 
-      {% if justSaved %}
+      {% if justSaved and canEditScores %}
         {{ govukNotificationBanner({
           type: "success",
           text: "Score saved for " + skill.label + "."
         }) }}
       {% endif %}
 
-      {% if error %}
+      {% if error and canEditScores %}
         {{ govukErrorSummary({
           titleText: "There is a problem",
           errorList: [{ text: error, href: "#score-" + skill.key }]
@@ -40,35 +40,30 @@
         {% endif %}
       </div>
 
-      {% if not canEditScores %}
-        {{ govukInsetText({
-          text: "You can review evidence, but only Head of Design can save official scores."
-        }) }}
-      {% endif %}
+      {% if canEditScores %}
+        <form method="post" action="/review/gdad-evidence/{{ targetPersonId }}/{{ skill.key }}" novalidate>
+          <input type="hidden" name="crumb" value="{{ crumb }}">
+          {{ govukSelect({
+            id: "score-" + skill.key,
+            name: "score_" + skill.key,
+            label: {
+              text: "Change score" if skill.officialScore else "Score",
+              classes: "govuk-label--m"
+            },
+            items: [
+              { value: "", text: "Not set", selected: not skill.officialScore },
+              { value: "1", text: "1 — Below standard", selected: skill.officialScore == 1 },
+              { value: "2", text: "2 — At standard", selected: skill.officialScore == 2 },
+              { value: "3", text: "3 — Above standard", selected: skill.officialScore == 3 }
+            ],
+            errorMessage: { text: error } if error
+          }) }}
 
-      <form method="post" action="/review/gdad-evidence/{{ targetPersonId }}/{{ skill.key }}" novalidate>
-        <input type="hidden" name="crumb" value="{{ crumb }}">
-        {{ govukSelect({
-          id: "score-" + skill.key,
-          name: "score_" + skill.key,
-          label: {
-            text: "Change score" if skill.officialScore else "Score",
-            classes: "govuk-label--m"
-          },
-          items: [
-            { value: "", text: "Not set", selected: not skill.officialScore },
-            { value: "1", text: "1 — Below standard", selected: skill.officialScore == 1 },
-            { value: "2", text: "2 — At standard", selected: skill.officialScore == 2 },
-            { value: "3", text: "3 — Above standard", selected: skill.officialScore == 3 }
-          ],
-          disabled: not canEditScores,
-          errorMessage: { text: error } if error
-        }) }}
-
-        {% if canEditScores %}
           {{ govukButton({ text: "Save score" }) }}
-        {% endif %}
-      </form>
+        </form>
+      {% else %}
+        <p class="govuk-body">Scores are given by the Head of Design.</p>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

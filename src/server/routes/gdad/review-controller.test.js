@@ -43,6 +43,7 @@ const ids = {
   designer: 'a00000000000000000000005',
   adminManager: 'a00000000000000000000006',
   adminManagersReport: 'b00000000000000000000004',
+  hodReport: 'b00000000000000000000005',
   ownReport: 'b00000000000000000000001',
   otherReport: 'b00000000000000000000002',
   unallocated: 'b00000000000000000000003'
@@ -117,6 +118,13 @@ const people = [
     name: 'Dee Admin-Managers-Report',
     role: 'Service Designer',
     managerId: ids.adminManager,
+    gdad: {}
+  },
+  {
+    id: ids.hodReport,
+    name: 'Hal Hod-Report',
+    role: 'Senior Service Designer',
+    managerId: ids.hod,
     gdad: {}
   }
 ]
@@ -316,6 +324,12 @@ describe('#gdadReviewRoutes access', () => {
     test.each([
       ['line manager, another manager’s report', 'manager', ids.otherReport],
       ['line manager, unallocated person', 'manager', ids.unallocated],
+      ['line manager, own report', 'manager', ids.ownReport],
+      [
+        'admin line manager, own report',
+        'adminManager',
+        ids.adminManagersReport
+      ],
       ['plain admin, unallocated person', 'admin', ids.unallocated],
       ['plain admin, allocated person', 'admin', ids.ownReport],
       ['non-manager non-admin', 'designer', ids.ownReport]
@@ -326,14 +340,10 @@ describe('#gdadReviewRoutes access', () => {
     })
 
     test.each([
-      ['line manager, own report', 'manager', ids.ownReport],
-      [
-        'admin line manager, own report',
-        'adminManager',
-        ids.adminManagersReport
-      ],
+      ['Head of Design, own direct report', 'hod', ids.hodReport],
       ['Head of Design, unallocated person', 'hod', ids.unallocated],
-      ['Head of Design, another manager’s report', 'hod', ids.otherReport]
+      ['Head of Design, another manager’s report', 'hod', ids.otherReport],
+      ['Head of Design, self-review special case', 'hod', ids.hod]
     ])('Allowed for %s', async (_label, who, id) => {
       const { statusCode, headers } = await post(
         users[who],
@@ -348,6 +358,170 @@ describe('#gdadReviewRoutes access', () => {
       expect(savedId).toBe(id)
       expect(scores.design_communication).toBe(2)
       expect(reviewerId).toBe(users[who].id)
+    })
+  })
+
+  describe('Line managers are view-only', () => {
+    const scored = {
+      id: ids.ownReport,
+      name: 'Ada Own-Report',
+      role: 'Interaction Designer',
+      managerId: ids.manager,
+      gdad: {
+        design_communication: {
+          evidenceText: 'Some evidence',
+          evidenceUpdatedAt: '2026-10-01T09:00:00.000Z',
+          officialScore: 2,
+          scoredAt: '2026-10-02T09:00:00.000Z'
+        }
+      }
+    }
+    beforeEach(() => {
+      mockState.people = [
+        scored,
+        ...people.filter((p) => p.id !== ids.ownReport)
+      ]
+    })
+
+    test('See their report’s scores and capability level, with no score controls', async () => {
+      const { statusCode, result } = await get(
+        users.manager,
+        personUrl(ids.ownReport)
+      )
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toContain('2 — At standard')
+      expect(result).toContain('Capability level (best 6 scores)')
+      expect(result).toContain('Scores are given by the Head of Design.')
+      expect(result).not.toContain('name="score_')
+      expect(result).not.toContain('Change score')
+      expect(result).not.toContain('Save scores')
+      expect(result).not.toContain('action="/review/gdad-evidence')
+    })
+
+    test('See a skill page with the score, but no score form', async () => {
+      const { statusCode, result } = await get(
+        users.manager,
+        skillUrl(ids.ownReport)
+      )
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toContain('2 — At standard')
+      expect(result).toContain('Some evidence')
+      expect(result).toContain('Scores are given by the Head of Design.')
+      expect(result).not.toContain('name="score_')
+      expect(result).not.toContain('Save score')
+      expect(result).not.toContain('action="/review/gdad-evidence')
+    })
+
+    test('The Head of Design gets the score controls', async () => {
+      const person = (await get(users.hod, personUrl(ids.ownReport))).result
+      expect(person).toContain('name="score_design_communication"')
+      expect(person).toContain('Save scores')
+      expect(person).not.toContain('Scores are given by the Head of Design.')
+      const skill = (await get(users.hod, skillUrl(ids.ownReport))).result
+      expect(skill).toContain('name="score_design_communication"')
+      expect(skill).toContain('Save score')
+    })
+
+    test('My team tells line managers the Head of Design scores', async () => {
+      const { result } = await get(users.manager, '/my-team')
+      expect(result).toContain('Scores are given by the Head of Design.')
+      expect(result).not.toContain('read their GDaD evidence and score it')
+    })
+  })
+
+  describe('Head of Design My team views', () => {
+    function rowFor(result, name) {
+      const start = result.indexOf(name)
+      return result.slice(start, result.indexOf('</tr>', start))
+    }
+
+    test('Defaults to the whole team, with a line manager column', async () => {
+      const { statusCode, result } = await get(users.hod, '/my-team')
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toMatch(
+        /href="\/my-team\?view=whole" aria-current="page">Whole team/
+      )
+      expect(result).toContain(
+        '<th scope="col" class="govuk-table__header">Line manager</th>'
+      )
+      expect(rowFor(result, 'Ada Own-Report')).toContain('Manager Themselves')
+      expect(rowFor(result, 'Hal Hod-Report')).toContain(
+        'Head Of Design Themselves'
+      )
+      expect(rowFor(result, 'Cy Unallocated')).toContain('Not allocated')
+      expect(result).toContain('Bea Other-Report')
+    })
+
+    test('Whole team can be chosen explicitly', async () => {
+      const { result } = await get(users.hod, '/my-team?view=whole')
+      expect(result).toContain('Cy Unallocated')
+      expect(result).toContain('Hal Hod-Report')
+    })
+
+    test('My direct reports shows only people the Head of Design manages', async () => {
+      const { statusCode, result } = await get(
+        users.hod,
+        '/my-team?view=direct'
+      )
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toMatch(
+        /href="\/my-team\?view=direct" aria-current="page">My direct reports \(1\)/
+      )
+      expect(result).toContain('Hal Hod-Report')
+      expect(result).not.toContain('Ada Own-Report')
+      expect(result).not.toContain('Cy Unallocated')
+      expect(result).not.toContain('>Line manager</th>')
+    })
+
+    test('An unknown view falls back to the whole team', async () => {
+      const { result } = await get(users.hod, '/my-team?view=nonsense')
+      expect(result).toMatch(/view=whole" aria-current="page"/)
+    })
+
+    test('Shows an empty state when the Head of Design has no direct reports', async () => {
+      mockState.people = people.filter((p) => p.id !== ids.hodReport)
+      const { result } = await get(users.hod, '/my-team?view=direct')
+      expect(result).toContain('My direct reports (0)')
+      expect(result).toContain(
+        'No designers have you as their responsible manager.'
+      )
+    })
+
+    test('Line managers get no views or line manager column', async () => {
+      const { result } = await get(users.manager, '/my-team')
+      expect(result).not.toContain('My team views')
+      expect(result).not.toContain('view=whole')
+      expect(result).not.toContain('view=direct')
+      expect(result).not.toContain('>Line manager</th>')
+    })
+  })
+
+  describe('Scores CSV', () => {
+    test('Head of Design gets everyone, with a line manager column', async () => {
+      const { result } = await get(
+        users.hod,
+        '/review/gdad-evidence/export.csv'
+      )
+      const lines = result.replace('\uFEFF', '').split('\n')
+      expect(lines[0].endsWith(',Line manager')).toBe(true)
+      const line = (name) => lines.find((l) => l.startsWith(name))
+      expect(line('Ada Own-Report').endsWith(',Manager Themselves')).toBe(true)
+      expect(line('Cy Unallocated').endsWith(',Not allocated')).toBe(true)
+      expect(
+        line('Hal Hod-Report').endsWith(',Head Of Design Themselves')
+      ).toBe(true)
+    })
+
+    test('Line managers get only their reports, with no line manager column', async () => {
+      const { result } = await get(
+        users.manager,
+        '/review/gdad-evidence/export.csv'
+      )
+      const lines = result.replace('\uFEFF', '').split('\n')
+      expect(lines[0]).not.toContain('Line manager')
+      expect(lines[0].endsWith(',Capability Level Change')).toBe(true)
+      expect(lines).toHaveLength(2)
+      expect(lines[1].startsWith('Ada Own-Report')).toBe(true)
     })
   })
 
@@ -451,7 +625,8 @@ describe('#gdadReviewRoutes access', () => {
         },
         'Dan Nothing': {}
       })
-      const { result } = await get(users.manager, '/my-team')
+      const { result } = await get(users.hod, '/my-team')
+      expect(result).toContain('2 designers need your attention')
       expect(rowFor(result, 'Ann Unscored')).toContain('Needs your attention')
       expect(rowFor(result, 'Ben Changed')).toContain('Needs your attention')
       expect(rowFor(result, 'Cat Scored')).not.toContain('Needs your attention')
@@ -460,6 +635,17 @@ describe('#gdadReviewRoutes access', () => {
         'Needs your attention'
       )
       expect(rowFor(result, 'Cat Scored')).toContain('1 of 7')
+
+      // A line manager is told the same thing as information, not asked to score
+      const lmView = (await get(users.manager, '/my-team')).result
+      expect(lmView).not.toContain('Needs your attention')
+      expect(lmView).not.toContain('to score</span>')
+      expect(lmView).toContain('2 designers have evidence waiting for a score')
+      expect(rowFor(lmView, 'Ann Unscored')).toContain('Waiting for a score')
+      expect(rowFor(lmView, 'Ben Changed')).toContain(
+        '1 skill new or updated since last scored'
+      )
+      expect(rowFor(lmView, 'Cat Scored')).toContain('Up to date')
     })
 
     test('Lists people needing attention first, then by name', async () => {
@@ -538,18 +724,24 @@ describe('#gdadReviewRoutes access', () => {
         .result
       const managerView = (await get(users.manager, personUrl(ids.designer)))
         .result
+      const hodView = (await get(users.hod, personUrl(ids.designer))).result
 
       expect(skillLabels(designerView)).toHaveLength(7)
       expect(skillLabels(managerView)).toEqual(skillLabels(designerView))
-      // The manager's view only adds the score control column
-      expect(tableHeadings(managerView)).toEqual([
+      expect(skillLabels(hodView)).toEqual(skillLabels(designerView))
+      // The line manager sees the same table as the designer
+      expect(tableHeadings(managerView)).toEqual(tableHeadings(designerView))
+      // The Head of Design's view only adds the score control column
+      expect(tableHeadings(hodView)).toEqual([
         ...tableHeadings(designerView),
         'Change score'
       ])
       expect(capabilityPanel(managerView)).toEqual(
         capabilityPanel(designerView)
       )
-      expect(managerView).toContain('name="score_design_communication"')
+      expect(capabilityPanel(hodView)).toEqual(capabilityPanel(designerView))
+      expect(hodView).toContain('name="score_design_communication"')
+      expect(managerView).not.toContain('name="score_design_communication"')
       expect(designerView).not.toContain('name="score_design_communication"')
     })
 

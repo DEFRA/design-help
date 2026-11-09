@@ -3,6 +3,7 @@ import Boom from '@hapi/boom'
 import { backendApi } from '#/server/common/helpers/backend-api.js'
 import {
   canAccessGdadReviewSection,
+  canScoreGdadEvidenceForTarget,
   getGdadReviewerRole,
   listReviewablePeople
 } from '#/server/common/helpers/gdad/access.js'
@@ -55,6 +56,8 @@ export function buildTeamRow(person) {
     id: person.id,
     name: person.name,
     role: person.role,
+    managerId: person.managerId ?? null,
+    lineManagerName: person.lineManagerName ?? NOT_ALLOCATED,
     skillsWithEvidence: skillRows.filter((s) => String(s.evidenceText).trim())
       .length,
     skillsScored: skillRows.filter((s) => s.officialScore != null).length,
@@ -75,14 +78,47 @@ export function sortTeamRows(rows) {
   })
 }
 
+const NOT_ALLOCATED = 'Not allocated'
+
+/**
+ * Everyone on the GDaD path the user may see, sorted by name. Each person
+ * gets `lineManagerName`: their manager's name, or "Not allocated" if they
+ * have none (or their manager is no longer in Design Help).
+ */
 async function listEligiblePeople(user) {
-  const people = await listReviewablePeople(user)
+  const everyone = await backendApi.listPeople()
+  const namesById = new Map(
+    everyone.filter((p) => p.name).map((p) => [p.id, p.name])
+  )
+  const people = await listReviewablePeople(user, everyone)
   return people
     .filter((person) => isGdadEvidenceApplicableRole(person.role))
+    .map((person) => ({
+      ...person,
+      lineManagerName:
+        (person.managerId && namesById.get(person.managerId)) || NOT_ALLOCATED
+    }))
     .sort(byName)
 }
 
-function targetViewContext(target) {
+/** The Head of Design's two My team views. */
+export const MY_TEAM_VIEWS = {
+  whole: 'whole',
+  direct: 'direct'
+}
+
+/**
+ * Which My team view to show the Head of Design. Defaults to the whole
+ * team: the Head of Design gives every score, so the whole team is where
+ * work waiting for them shows up.
+ */
+export function chooseMyTeamView(requested) {
+  return requested === MY_TEAM_VIEWS.direct
+    ? MY_TEAM_VIEWS.direct
+    : MY_TEAM_VIEWS.whole
+}
+
+function targetViewContext(user, target) {
   return {
     targetPersonId: target.id,
     targetName: target.name,
@@ -90,9 +126,13 @@ function targetViewContext(target) {
     gdadSkillsMatrixUrl: GDAD_SKILLS_MATRIX_URL,
     frameworkRolePageUrl: roleFrameworkPageUrl(target.role),
     frameworkRoleLabel: getFrameworkRolePageLabel(target.role),
-    // View and edit scope are identical in the port (see gdad/access.js)
-    canEditScores: true
+    // Line managers may see scores but only the Head of Design gives them
+    canEditScores: canScoreGdadEvidenceForTarget(user, target)
   }
+}
+
+function scoringForbidden() {
+  return Boom.forbidden('Only the Head of Design can give GDaD scores.')
 }
 
 /**
@@ -128,16 +168,27 @@ export const gdadReviewRoutes = [
         )
       }
 
-      const rows = sortTeamRows(
+      const role = getGdadReviewerRole(user)
+      const allRows = sortTeamRows(
         (await listEligiblePeople(user)).map(buildTeamRow)
       )
+      const directRows = allRows.filter((row) => row.managerId === user.id)
+
+      // Line managers only ever see their own reports, so get no views
+      const view = role === 'hod' ? chooseMyTeamView(request.query.view) : null
+      const rows = view === MY_TEAM_VIEWS.whole ? allRows : directRows
 
       return h.view('gdad/my-team', {
         pageTitle: 'My team',
         rows,
+        view,
+        wholeTeamCount: allRows.length,
+        directReportsCount: directRows.length,
+        showLineManagerColumn: view === MY_TEAM_VIEWS.whole,
+        canScore: role === 'hod',
         attentionCount: rows.filter((row) => row.needsAttention).length,
         skillCount: SKILLS.length,
-        gdadReviewerRole: getGdadReviewerRole(user)
+        gdadReviewerRole: role
       })
     }
   },
@@ -160,9 +211,14 @@ export const gdadReviewRoutes = [
         )
       }
 
+      const isHod = getGdadReviewerRole(user) === 'hod'
       const exportRows = (await listEligiblePeople(user)).map((person) => {
         const gdad = person.gdad ?? {}
-        const row = { name: person.name, role: person.role }
+        const row = {
+          name: person.name,
+          role: person.role,
+          lineManager: person.lineManagerName
+        }
         for (const col of EXPORT_COLUMNS) {
           const score = gdad[col.key]?.officialScore
           row[col.key] = score == null ? null : Number(score)
@@ -171,7 +227,9 @@ export const gdadReviewRoutes = [
       })
 
       return h
-        .response(buildAdminExportCsv(exportRows))
+        .response(
+          buildAdminExportCsv(exportRows, { includeLineManager: isHod })
+        )
         .type('text/csv')
         .header(
           'content-disposition',
@@ -200,7 +258,7 @@ export const gdadReviewRoutes = [
         pageTitle: `GDaD evidence — ${target.name}`,
         skillRows,
         capabilityBand: buildCapabilityBand(skillRows),
-        ...targetViewContext(target),
+        ...targetViewContext(request.app.user, target),
         justSaved: request.query.saved === '1',
         error: hasError
           ? 'Select valid score values (1, 2, 3 or Not set).'
@@ -216,6 +274,9 @@ export const gdadReviewRoutes = [
       const { target, response } = await requireReviewableTarget(request, h)
       if (response) {
         return response
+      }
+      if (!canScoreGdadEvidenceForTarget(request.app.user, target)) {
+        return scoringForbidden()
       }
 
       const { scores, invalid, invalidKey } = parseScorePayload(request.payload)
@@ -248,7 +309,7 @@ export const gdadReviewRoutes = [
       return h.view('gdad/review-skill', {
         pageTitle: `${skill.label} — ${target.name} — GDaD evidence`,
         skill,
-        ...targetViewContext(target),
+        ...targetViewContext(request.app.user, target),
         justSaved: request.query.saved === '1',
         error:
           request.query.err === 'invalid'
@@ -268,6 +329,9 @@ export const gdadReviewRoutes = [
       const { target, response } = await requireReviewableTarget(request, h)
       if (response) {
         return response
+      }
+      if (!canScoreGdadEvidenceForTarget(request.app.user, target)) {
+        return scoringForbidden()
       }
 
       const raw = request.payload?.[`score_${skillKey}`]
