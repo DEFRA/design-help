@@ -17,7 +17,17 @@ const sanitizeOptions = {
     'code',
     'pre'
   ],
-  allowedAttributes: { a: ['href', 'title'] },
+  allowedAttributes: { a: ['href', 'title', 'rel'] },
+  // Only the GOV.UK classes added by transformTags below may appear; any
+  // other class is removed.
+  allowedClasses: {
+    p: ['govuk-body'],
+    ul: ['govuk-list', 'govuk-list--bullet'],
+    ol: ['govuk-list', 'govuk-list--number'],
+    pre: ['govuk-body'],
+    code: ['govuk-body'],
+    a: ['govuk-link']
+  },
   allowedSchemes: ['http', 'https', 'mailto'],
   transformTags: {
     p: sanitizeHtml.simpleTransform('p', { class: 'govuk-body' }),
