@@ -14,6 +14,10 @@
         }) }}
       {% endif %}
 
+      {% if nothingChanged and canEditScores %}
+        {{ govukNotificationBanner({ text: "The score for " + skill.label + " was not changed." }) }}
+      {% endif %}
+
       {% if error and canEditScores %}
         {{ govukErrorSummary({
           titleText: "There is a problem",

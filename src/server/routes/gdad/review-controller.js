@@ -163,6 +163,26 @@ function parseScorePayload(payload) {
   return { scores }
 }
 
+function normaliseScore(value) {
+  return value == null || value === '' ? null : Number(value)
+}
+
+/**
+ * Only the skills whose score is different from the one already saved.
+ * The backend stamps `scoredAt` on every skill it is sent, so sending
+ * unchanged scores would make them look newly scored.
+ */
+export function changedScores(target, scores) {
+  const saved = target?.gdad ?? {}
+  const changed = {}
+  for (const [key, score] of Object.entries(scores)) {
+    if (normaliseScore(saved[key]?.officialScore) !== normaliseScore(score)) {
+      changed[key] = score
+    }
+  }
+  return changed
+}
+
 export const gdadReviewRoutes = [
   {
     method: 'GET',
@@ -275,6 +295,7 @@ export const gdadReviewRoutes = [
         capabilityBand: buildCapabilityBand(skillRows),
         ...targetViewContext(request.app.user, target),
         justSaved: request.query.saved === '1',
+        nothingChanged: request.query.saved === 'none',
         error: hasError
           ? 'Select valid score values (1, 2, 3 or Not set).'
           : null,
@@ -303,7 +324,11 @@ export const gdadReviewRoutes = [
         )
       }
 
-      await backendApi.saveGdadScores(target.id, scores, request.app.user.id)
+      const changed = changedScores(target, scores)
+      if (!Object.keys(changed).length) {
+        return h.redirect(`/review/gdad-evidence/${target.id}?saved=none`)
+      }
+      await backendApi.saveGdadScores(target.id, changed, request.app.user.id)
       return h.redirect(`/review/gdad-evidence/${target.id}?saved=1`)
     }
   },
@@ -365,6 +390,7 @@ export const gdadReviewRoutes = [
         skill,
         ...targetViewContext(request.app.user, target),
         justSaved: request.query.saved === '1',
+        nothingChanged: request.query.saved === 'none',
         error:
           request.query.err === 'invalid'
             ? 'Select a valid score (1, 2, 3 or Not set).'
@@ -400,14 +426,13 @@ export const gdadReviewRoutes = [
         score = n
       }
 
-      await backendApi.saveGdadScores(
-        target.id,
-        { [skillKey]: score },
-        request.app.user.id
-      )
-      return h.redirect(
-        `/review/gdad-evidence/${target.id}/${encodeURIComponent(skillKey)}?saved=1`
-      )
+      const skillUrl = `/review/gdad-evidence/${target.id}/${encodeURIComponent(skillKey)}`
+      const changed = changedScores(target, { [skillKey]: score })
+      if (!Object.keys(changed).length) {
+        return h.redirect(`${skillUrl}?saved=none`)
+      }
+      await backendApi.saveGdadScores(target.id, changed, request.app.user.id)
+      return h.redirect(`${skillUrl}?saved=1`)
     }
   }
 ]

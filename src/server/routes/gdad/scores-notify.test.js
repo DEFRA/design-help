@@ -85,6 +85,15 @@ const users = {
     isHeadOfDesignSuperUser: false,
     isLineManager: true
   },
+  admin: {
+    id: 'a00000000000000000000004',
+    email: 'admin@example.test',
+    name: 'Al Admin',
+    role: 'Interaction Designer',
+    isAdmin: true,
+    isHeadOfDesignSuperUser: false,
+    isLineManager: false
+  },
   designer: {
     id: ids.scored,
     email: 'ada@example.test',
@@ -102,7 +111,7 @@ const scoredGdad = {
     officialScore: 3,
     scoredAt: '2026-11-05T10:00:00.000Z'
   },
-  user_focus: {
+  iterative_design: {
     evidenceText: 'More evidence',
     officialScore: 2,
     scoredAt: '2026-11-01T10:00:00.000Z'
@@ -154,7 +163,7 @@ function buildPeople() {
       role: 'Interaction Designer',
       managerId: ids.manager,
       gdad: {
-        user_focus: { evidenceText: 'Evidence only', officialScore: null }
+        iterative_design: { evidenceText: 'Evidence only', officialScore: null }
       }
     },
     {
@@ -203,6 +212,9 @@ describe('#gdad scores-updated email', () => {
     vi.clearAllMocks()
     sendScoresUpdatedEmail.mockImplementation(async () => {})
     backendApi.markGdadScoresNotified.mockImplementation(async () => ({}))
+    backendApi.getPerson.mockImplementation(
+      async (id) => mockState.people.find((person) => person.id === id) ?? null
+    )
     mockState.people = buildPeople()
   })
 
@@ -392,7 +404,8 @@ describe('#gdad scores-updated email', () => {
 
     test.each([
       ['line manager of the person', 'manager'],
-      ['the designer themselves', 'designer']
+      ['the designer themselves', 'designer'],
+      ['plain admin who is not the Head of Design', 'admin']
     ])('Is refused (403) for the %s', async (_label, who) => {
       const response = await post(users[who], notifyUrl(ids.scored))
       expect(response.statusCode).toBe(statusCodes.forbidden)
@@ -408,6 +421,103 @@ describe('#gdad scores-updated email', () => {
       })
       expect(response.statusCode).toBe(statusCodes.forbidden)
       expect(sendScoresUpdatedEmail).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Line manager lookup fails', () => {
+    test('Page still shows the button, without the copy-in line, and sending still works', async () => {
+      backendApi.getPerson.mockImplementation(async (id) => {
+        if (id === ids.manager) {
+          throw new Error('backend down')
+        }
+        return mockState.people.find((person) => person.id === id) ?? null
+      })
+
+      const { statusCode, result } = await get(users.hod, personUrl(ids.scored))
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toContain(BUTTON_TEXT)
+      expect(result).not.toContain('will be copied in')
+
+      const { page } = await postAndFollow(users.hod, notifyUrl(ids.scored))
+      expect(sendScoresUpdatedEmail).toHaveBeenCalledTimes(1)
+      expect(sendScoresUpdatedEmail.mock.calls[0][0]).toBe('ada@example.test')
+      expect(page.result).toContain('Email sent to Ada Scored.')
+    })
+  })
+
+  describe('Saving unchanged scores', () => {
+    const allScores = {
+      score_design_communication: '3',
+      score_iterative_design: '2'
+    }
+
+    test('Whole-person save with nothing changed saves nothing and keeps the "emailed" state', async () => {
+      const response = await post(
+        users.hod,
+        personUrl(ids.alreadyTold),
+        allScores
+      )
+      expect(response.statusCode).toBe(302)
+      expect(response.headers.location).toBe(
+        `${personUrl(ids.alreadyTold)}?saved=none`
+      )
+      expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
+
+      const { result } = await get(users.hod, response.headers.location)
+      expect(result).toContain('No scores were changed.')
+      expect(result).not.toContain('Scores saved.')
+      expect(result).not.toContain(BUTTON_TEXT)
+    })
+
+    test('Whole-person save sends only the skills that changed', async () => {
+      const response = await post(users.hod, personUrl(ids.alreadyTold), {
+        ...allScores,
+        score_iterative_design: '3'
+      })
+      expect(response.headers.location).toBe(
+        `${personUrl(ids.alreadyTold)}?saved=1`
+      )
+      expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
+        ids.alreadyTold,
+        { iterative_design: 3 },
+        ids.hod
+      )
+    })
+
+    test('Clearing a score counts as a change', async () => {
+      await post(users.hod, personUrl(ids.alreadyTold), {
+        score_design_communication: '3'
+      })
+      expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
+        ids.alreadyTold,
+        { iterative_design: null },
+        ids.hod
+      )
+    })
+
+    test('Single-skill save with the same score saves nothing', async () => {
+      const url = `${personUrl(ids.alreadyTold)}/design_communication`
+      const response = await post(users.hod, url, {
+        score_design_communication: '3'
+      })
+      expect(response.headers.location).toBe(`${url}?saved=none`)
+      expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
+
+      const { result } = await get(users.hod, response.headers.location)
+      expect(result).toContain('was not changed.')
+    })
+
+    test('Single-skill save with a new score saves it', async () => {
+      const url = `${personUrl(ids.alreadyTold)}/design_communication`
+      const response = await post(users.hod, url, {
+        score_design_communication: '1'
+      })
+      expect(response.headers.location).toBe(`${url}?saved=1`)
+      expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
+        ids.alreadyTold,
+        { design_communication: 1 },
+        ids.hod
+      )
     })
   })
 
@@ -450,7 +560,7 @@ describe('#scoresNotifyStatus', () => {
 
   test('Older scores with no score date still count as scored', () => {
     expect(
-      scoresNotifyStatus({ gdad: { user_focus: { officialScore: 2 } } })
+      scoresNotifyStatus({ gdad: { iterative_design: { officialScore: 2 } } })
         .hasNewScores
     ).toBe(true)
   })
@@ -464,14 +574,27 @@ describe('#scoresNotifyStatus', () => {
     expect(status.hasNewScores).toBe(false)
   })
 
-  test('A cleared score after the last email still counts as new', () => {
+  test('Scores cleared after the last email (the backend blanks scoredAt) are not news', () => {
     const status = scoresNotifyStatus({
       gdad: {
-        user_focus: { officialScore: null, scoredAt: '2026-11-07T00:00:00Z' }
+        iterative_design: { officialScore: null, scoredAt: null },
+        design_communication: {
+          officialScore: 2,
+          scoredAt: '2026-11-01T00:00:00Z'
+        }
       },
       gdadScoresNotifiedAt: '2026-11-06T00:00:00Z'
     })
-    expect(status.hasNewScores).toBe(true)
+    expect(status.hasScores).toBe(true)
+    expect(status.hasNewScores).toBe(false)
+  })
+
+  test('A cleared score on its own means nothing to tell', () => {
+    expect(
+      scoresNotifyStatus({
+        gdad: { iterative_design: { officialScore: null, scoredAt: null } }
+      })
+    ).toEqual({ hasScores: false, hasNewScores: false, notifiedAt: null })
   })
 
   test('No scores means nothing to tell', () => {
@@ -492,6 +615,8 @@ describe('#buildScoresEmailPanel', () => {
     expect(formatNotifiedDate('2026-11-06T09:00:00.000Z')).toBe(
       '6 November 2026'
     )
+    // Just after midnight in the UK during summer time is still that UK day
+    expect(formatNotifiedDate('2026-07-14T23:30:00.000Z')).toBe('15 July 2026')
     expect(formatNotifiedDate(undefined)).toBeNull()
   })
 })

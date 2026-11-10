@@ -32,6 +32,10 @@
         {% endif %}
       {% endif %}
 
+      {% if nothingChanged and canEditScores %}
+        {{ govukNotificationBanner({ text: "No scores were changed." }) }}
+      {% endif %}
+
       {% if scoresEmailResult and canEditScores %}
         {% if scoresEmailResult.kind == "success" %}
           {{ govukNotificationBanner({ type: "success", text: scoresEmailResult.text }) }}

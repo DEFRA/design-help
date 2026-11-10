@@ -25,7 +25,8 @@ export function formatNotifiedDate(value) {
     ? d.toLocaleDateString('en-GB', {
         day: 'numeric',
         month: 'long',
-        year: 'numeric'
+        year: 'numeric',
+        timeZone: 'Europe/London'
       })
     : null
 }
@@ -82,7 +83,15 @@ export async function findManagerToCopy(target, sender) {
   if (!managerId || managerId === target.id || managerId === sender?.id) {
     return null
   }
-  const manager = await backendApi.getPerson(managerId)
+  let manager
+  try {
+    manager = await backendApi.getPerson(managerId)
+  } catch (error) {
+    logger.warn(
+      `Could not look up line manager ${managerId} for person ${target.id}: ${error.message}`
+    )
+    return null
+  }
   if (!manager?.email || manager.id !== managerId) {
     return null
   }
