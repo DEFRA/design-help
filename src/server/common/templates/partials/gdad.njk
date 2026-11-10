@@ -18,39 +18,28 @@
   {%- endif -%}
 {% endmacro %}
 
+{# One line linking to the designer's level on the framework role page. #}
 {% macro gdadFrameworkLinks(params) %}
-  <p class="govuk-body-s govuk-!-margin-bottom-4">
-    Expected levels are for <strong>{{ params.frameworkRoleLabel }}</strong>.
-    <a class="govuk-link" href="{{ params.frameworkRolePageUrl }}" target="_blank" rel="noopener noreferrer">Designer role on the DDaT capability framework (opens in a new tab)</a>
-    · <a class="govuk-link" href="{{ params.gdadSkillsMatrixUrl }}">Local skills matrix (PNG)</a>
+  <p class="govuk-body">
+    Expected levels: <a class="govuk-link" href="{{ params.frameworkRolePageUrl }}" target="_blank" rel="noopener noreferrer">{{ params.frameworkRoleLabel }} on the DDaT capability framework (opens in a new tab)</a>
   </p>
 {% endmacro %}
 
-{% macro gdadScoringExplainer() %}
-  <p class="govuk-body-s govuk-!-margin-bottom-4">
-    <strong>Official scores</strong> (1 to 3) are given by the Head of Design. For each skill, <strong>1</strong> means one skill level below expected, <strong>2</strong> means at the expected skill level, and <strong>3</strong> means one skill level above expected.
-    The overall <strong>capability level</strong> is worked out from the <strong>best six scores</strong> across the seven skills.
-  </p>
-{% endmacro %}
-
+{#
+  The designer's overall score: the total of their best 6 of 7 skill scores
+  and the rating that total gives.
+#}
 {% macro gdadCapabilityPanel(capabilityBand) %}
   <div class="govuk-inset-text govuk-!-margin-bottom-6">
-    <h2 class="govuk-heading-s govuk-!-margin-bottom-2">Capability level (best 6 scores)</h2>
     {% if capabilityBand.ready and capabilityBand.band %}
-      <p class="govuk-body govuk-!-margin-bottom-1">
-        <strong>Capability level {{ capabilityBand.band.level }} — {{ capabilityBand.band.rating }}</strong>
-      </p>
-      <p class="govuk-body-s govuk-!-margin-bottom-0">
-        Best 6 score total: <strong>{{ capabilityBand.total }}</strong> (average {{ capabilityBand.averageLabel }}), from {{ capabilityBand.scoredSkillsCount }} scored skills.
-      </p>
+      <h2 class="govuk-heading-m govuk-!-margin-bottom-2">Score {{ capabilityBand.total }} — {{ capabilityBand.band.rating }}</h2>
     {% else %}
-      <p class="govuk-body govuk-!-margin-bottom-1">
-        Capability level not available yet.
-      </p>
-      <p class="govuk-body-s govuk-!-margin-bottom-0">
-        It needs official scores on at least <strong>6 skills</strong>. Skills scored so far: <strong>{{ capabilityBand.scoredSkillsCount }}</strong>.
-      </p>
+      <h2 class="govuk-heading-m govuk-!-margin-bottom-2">No score yet</h2>
+      <p class="govuk-body govuk-!-margin-bottom-2">{{ capabilityBand.scoredSkillsCount }} of 6 skills scored so far.</p>
     {% endif %}
+    <p class="govuk-body-s govuk-!-margin-bottom-0">
+      Total of the best 6 of 7 skill scores. The Head of Design scores each skill 1 (below expected level), 2 (at expected level) or 3 (above expected level).
+    </p>
   </div>
 {% endmacro %}
 
@@ -141,7 +130,6 @@
   <p class="govuk-body">
     <a class="govuk-link" href="{{ skill.frameworkUrl }}" target="_blank" rel="noopener noreferrer">Full skill description on the DDaT framework (opens in a new tab)</a>
     · <a class="govuk-link" href="{{ params.frameworkRolePageUrl }}" target="_blank" rel="noopener noreferrer">Designer role — {{ params.frameworkRoleLabel }} (opens in a new tab)</a>
-    · <a class="govuk-link" href="{{ params.gdadSkillsMatrixUrl }}">Local skills matrix (PNG)</a>
   </p>
 
   <div class="govuk-inset-text">

@@ -390,7 +390,7 @@ describe('#gdadReviewRoutes access', () => {
       )
       expect(statusCode).toBe(statusCodes.ok)
       expect(result).toContain('2 — At standard')
-      expect(result).toContain('Capability level (best 6 scores)')
+      expect(result).toContain('No score yet')
       expect(result).toContain('Scores are given by the Head of Design.')
       expect(result).not.toContain('name="score_')
       expect(result).not.toContain('Change score')
@@ -714,8 +714,9 @@ describe('#gdadReviewRoutes access', () => {
       ].map((m) => m[1].trim())
     }
     function capabilityPanel(html) {
-      const start = html.indexOf('Capability level (best 6 scores)')
-      return html.slice(start, html.indexOf('</div>', start))
+      const explanation = html.indexOf('Total of the best 6 of 7 skill scores')
+      const start = html.lastIndexOf('govuk-inset-text', explanation)
+      return html.slice(start, html.indexOf('</div>', explanation))
     }
 
     test('Summary pages share skills, order, headings and capability wording', async () => {
@@ -760,6 +761,108 @@ describe('#gdadReviewRoutes access', () => {
       expect(detail(managerView)).toEqual(detail(designerView))
       expect(designerView).toContain('name="evidence_design_communication"')
       expect(managerView).not.toContain('name="evidence_design_communication"')
+    })
+  })
+
+  describe('Top of the evidence pages', () => {
+    const allSkillKeys = [
+      'design_communication',
+      'designing_for_everyone',
+      'designing_strategically',
+      'designing_together',
+      'evidence_based_design',
+      'iterative_design',
+      'leading_design'
+    ]
+    const explanation =
+      'Total of the best 6 of 7 skill scores. The Head of Design scores each skill 1 (below expected level), 2 (at expected level) or 3 (above expected level).'
+
+    function withScores(person, scores) {
+      return {
+        ...person,
+        gdad: Object.fromEntries(
+          scores.map((score, i) => [allSkillKeys[i], { officialScore: score }])
+        )
+      }
+    }
+
+    function designerWith(scores) {
+      return withScores(
+        {
+          id: ids.designer,
+          name: 'Gil Designer',
+          role: 'Interaction Designer',
+          managerId: ids.manager
+        },
+        scores
+      )
+    }
+
+    test('Shows the total and rating once six skills are scored', async () => {
+      mockState.people = [...people, designerWith([3, 3, 3, 3, 3, 3, 1])]
+      for (const [user, url] of [
+        [users.designer, '/my-gdad-evidence'],
+        [users.manager, personUrl(ids.designer)],
+        [users.hod, personUrl(ids.designer)]
+      ]) {
+        const { result } = await get(user, url)
+        expect(result).toMatch(
+          /<h2 class="govuk-heading-m[^"]*">Score 18 — Accomplished Level 2<\/h2>/
+        )
+        expect(result).toContain(explanation)
+        expect(result).not.toContain('No score yet')
+        expect(result).not.toContain('Capability level 6')
+        expect(result).not.toMatch(/Capability level \d/)
+      }
+    })
+
+    test('Says there is no score yet, and how many skills are scored', async () => {
+      mockState.people = [...people, designerWith([2, 2, 3])]
+      const { result } = await get(users.designer, '/my-gdad-evidence')
+      expect(result).toMatch(
+        /<h2 class="govuk-heading-m[^"]*">No score yet<\/h2>/
+      )
+      expect(result).toContain('3 of 6 skills scored so far.')
+      expect(result).toContain(explanation)
+      expect(result).not.toContain('Score 0')
+    })
+
+    test('Links to the designer’s level on the framework, in one line', async () => {
+      mockState.people = [...people, designerWith([])]
+      const { result } = await get(users.designer, '/my-gdad-evidence')
+      expect(result).toContain(
+        'Expected levels: <a class="govuk-link" href="https://understand-digital-data-roles-skills.service.gov.uk/role/interaction-designer/#interaction-designer" target="_blank" rel="noopener noreferrer">Interaction designer on the DDaT capability framework (opens in a new tab)</a>'
+      )
+      expect(result).not.toContain('Official scores')
+    })
+
+    test('Links a service designer to their level on the service designer page', async () => {
+      const { result } = await get(users.hod, personUrl(ids.hodReport))
+      expect(result).toContain(
+        'href="https://understand-digital-data-roles-skills.service.gov.uk/role/service-designer/#senior-service-designer"'
+      )
+      expect(result).toContain(
+        'Senior service designer on the DDaT capability framework (opens in a new tab)'
+      )
+    })
+
+    test('No longer links to a local skills matrix', async () => {
+      mockState.people = [...people, designerWith([2])]
+      for (const [user, url] of [
+        [users.designer, '/my-gdad-evidence'],
+        [users.designer, '/my-gdad-evidence/design_communication'],
+        [users.manager, personUrl(ids.designer)],
+        [users.manager, skillUrl(ids.designer)]
+      ]) {
+        const { result } = await get(user, url)
+        expect(result).not.toMatch(/skills matrix/i)
+        expect(result).not.toContain('skills-matrix')
+      }
+      const { statusCode } = await get(
+        users.designer,
+        '/gdad-reference/skills-matrix.png'
+      )
+      expect(statusCode).toBe(statusCodes.notFound)
     })
   })
 })

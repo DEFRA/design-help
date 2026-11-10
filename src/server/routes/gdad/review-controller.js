@@ -10,7 +10,6 @@ import {
 import {
   SKILLS,
   SKILL_KEY_SET,
-  GDAD_SKILLS_MATRIX_URL,
   getFrameworkRolePageLabel,
   isGdadEvidenceApplicableRole,
   roleFrameworkPageUrl
@@ -130,7 +129,6 @@ function targetViewContext(user, target) {
     targetPersonId: target.id,
     targetName: target.name,
     targetRole: target.role,
-    gdadSkillsMatrixUrl: GDAD_SKILLS_MATRIX_URL,
     frameworkRolePageUrl: roleFrameworkPageUrl(target.role),
     frameworkRoleLabel: getFrameworkRolePageLabel(target.role),
     // Line managers may see scores but only the Head of Design gives them

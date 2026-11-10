@@ -5,7 +5,6 @@ import {
   SKILLS,
   SKILL_KEY_SET,
   MAX_EVIDENCE_LENGTH,
-  GDAD_SKILLS_MATRIX_URL,
   getFrameworkRolePageLabel,
   roleFrameworkPageUrl
 } from '#/server/common/helpers/gdad/constants.js'
@@ -24,7 +23,6 @@ import {
 
 function frameworkContext(role) {
   return {
-    gdadSkillsMatrixUrl: GDAD_SKILLS_MATRIX_URL,
     frameworkRolePageUrl: roleFrameworkPageUrl(role),
     frameworkRoleLabel: getFrameworkRolePageLabel(role)
   }

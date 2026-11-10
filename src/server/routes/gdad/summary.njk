@@ -1,5 +1,5 @@
 {% extends 'layouts/page.njk' %}
-{% from "partials/gdad.njk" import gdadFrameworkLinks, gdadScoringExplainer, gdadCapabilityPanel, gdadSkillsTable %}
+{% from "partials/gdad.njk" import gdadFrameworkLinks, gdadCapabilityPanel, gdadSkillsTable %}
 
 {% block content %}
   <div class="govuk-grid-row">
@@ -20,10 +20,8 @@
 
       {{ gdadFrameworkLinks({
         frameworkRoleLabel: frameworkRoleLabel,
-        frameworkRolePageUrl: frameworkRolePageUrl,
-        gdadSkillsMatrixUrl: gdadSkillsMatrixUrl
+        frameworkRolePageUrl: frameworkRolePageUrl
       }) }}
-      {{ gdadScoringExplainer() }}
 
       {{ gdadCapabilityPanel(capabilityBand) }}
 

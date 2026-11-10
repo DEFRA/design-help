@@ -3,7 +3,9 @@ import {
   getExpectedLevelKeyForSkillAndRole,
   getFrameworkRolePageLabel,
   getFrameworkTrackKeyForJobTitle,
-  getGradedLevelForSkillScore
+  getGradedLevelForSkillScore,
+  roleFrameworkPageUrl,
+  skillFrameworkUrl
 } from '#/server/common/helpers/gdad/constants.js'
 
 describe('#Design Manager grade', () => {
@@ -47,6 +49,46 @@ describe('#Design Manager grade', () => {
     )
     expect(getFrameworkTrackKeyForJobTitle('Head of Design')).toBe(
       'head_of_service_design'
+    )
+  })
+})
+
+describe('#Framework links', () => {
+  const base = 'https://understand-digital-data-roles-skills.service.gov.uk'
+
+  test('Should link a service designer to their level on the service designer role page', () => {
+    expect(roleFrameworkPageUrl('Principal Service Designer')).toBe(
+      `${base}/role/service-designer/#lead-service-designer`
+    )
+    expect(roleFrameworkPageUrl('Senior Service Designer')).toBe(
+      `${base}/role/service-designer/#senior-service-designer`
+    )
+    expect(roleFrameworkPageUrl('Head of Design')).toBe(
+      `${base}/role/service-designer/#head-of-service-design`
+    )
+  })
+
+  test('Should link an interaction designer to their level on the interaction designer role page', () => {
+    expect(roleFrameworkPageUrl('Senior Interaction Designer')).toBe(
+      `${base}/role/interaction-designer/#senior-interaction-designer`
+    )
+    expect(roleFrameworkPageUrl('Interaction Designer')).toBe(
+      `${base}/role/interaction-designer/#interaction-designer`
+    )
+  })
+
+  test('Should link to the role page without a level when the job title has no level', () => {
+    expect(roleFrameworkPageUrl('Something Else')).toBe(
+      `${base}/role/service-designer/`
+    )
+    expect(roleFrameworkPageUrl(undefined)).toBe(
+      `${base}/role/service-designer/`
+    )
+  })
+
+  test('Should link each skill to its section of the skills page', () => {
+    expect(skillFrameworkUrl('design-communication')).toBe(
+      `${base}/skills/#design-communication`
     )
   })
 })

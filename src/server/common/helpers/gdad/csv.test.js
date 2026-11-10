@@ -314,7 +314,7 @@ describe('#buildGradeTemplateCsv', () => {
     expect(firstSkillCell).toContain('Design communication')
     expect(firstSkillCell).toContain('EXPERT (G6)')
     expect(firstSkillCell).toContain(
-      'Framework: https://ddat-capability-framework.service.gov.uk/skills#design-communication'
+      'Framework: https://understand-digital-data-roles-skills.service.gov.uk/skills/#design-communication'
     )
     expect(rows[1].slice(1)).toEqual(['', '', '', '', '0'])
 

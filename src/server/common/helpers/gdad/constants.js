@@ -1,11 +1,12 @@
 /**
  * GDaD / DDaT design skills — seven skills aligned with the Government
  * Digital and Data Profession Capability Framework
- * (https://ddat-capability-framework.service.gov.uk/).
+ * (https://understand-digital-data-roles-skills.service.gov.uk/).
  */
 
-export const FRAMEWORK_BASE = 'https://ddat-capability-framework.service.gov.uk'
-export const SKILLS_PATH = `${FRAMEWORK_BASE}/skills`
+export const FRAMEWORK_BASE =
+  'https://understand-digital-data-roles-skills.service.gov.uk'
+export const SKILLS_PATH = `${FRAMEWORK_BASE}/skills/`
 
 /** Job titles in this app that are not on the GDaD design skills path yet */
 const NON_GDAD_ROLES = new Set([
@@ -138,9 +139,6 @@ const JOB_TITLES_INTERACTION_DESIGNER_ROLE_PAGE = new Set([
   'Senior Interaction Designer'
 ])
 
-/** Served by app — local copy of team matrix PNG; canonical levels are from the framework role page. */
-export const GDAD_SKILLS_MATRIX_URL = '/gdad-reference/skills-matrix.png'
-
 export function getFrameworkTrackKeyForJobTitle(role) {
   if (!role) {
     return 'service_designer'
@@ -154,15 +152,23 @@ export function getFrameworkRolePageLabel(role) {
   return FRAMEWORK_TRACK_LABEL[track] || FRAMEWORK_TRACK_LABEL.service_designer
 }
 
-/** Full URL to the relevant DDaT “role” page (interaction vs service designer pathway). */
+/**
+ * Full URL to the relevant DDaT “role” page (interaction vs service designer
+ * pathway), jumping to the designer's level on that page — the page's
+ * anchors are the level names, e.g. `#lead-service-designer` or
+ * `#head-of-service-design`. Job titles we can't place on a level get the
+ * role page without an anchor.
+ */
 export function roleFrameworkPageUrl(profileRole) {
-  if (
-    profileRole &&
-    JOB_TITLES_INTERACTION_DESIGNER_ROLE_PAGE.has(String(profileRole).trim())
-  ) {
-    return `${FRAMEWORK_BASE}/role/interaction-designer`
+  const title = profileRole ? String(profileRole).trim() : ''
+  const page = JOB_TITLES_INTERACTION_DESIGNER_ROLE_PAGE.has(title)
+    ? `${FRAMEWORK_BASE}/role/interaction-designer/`
+    : `${FRAMEWORK_BASE}/role/service-designer/`
+  const track = ROLE_TO_FRAMEWORK_TRACK[title]
+  if (!track) {
+    return page
   }
-  return `${FRAMEWORK_BASE}/role/service-designer`
+  return `${page}#${track.replaceAll('_', '-')}`
 }
 
 export function getExpectedLevelKeyForSkillAndRole(skillKey, role) {
