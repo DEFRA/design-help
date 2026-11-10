@@ -25,6 +25,13 @@ import {
   formatGdadEvidenceTimestamp,
   requireReviewableTarget
 } from './helpers.js'
+import {
+  SCORES_EMAIL_RESULT_FLASH,
+  buildScoresEmailPanel,
+  canOfferScoresEmail,
+  scoresNotifyStatus,
+  sendScoresUpdated
+} from './scores-notify.js'
 
 function byName(a, b) {
   return String(a.name).localeCompare(String(b.name), undefined, {
@@ -254,6 +261,14 @@ export const gdadReviewRoutes = [
       const errorSkillKey = SKILL_KEY_SET.has(querySkill)
         ? querySkill
         : skillRows[0]?.key
+      const user = request.app.user
+      const canScore = canScoreGdadEvidenceForTarget(user, target)
+      const scoresEmail = canScore
+        ? await buildScoresEmailPanel(target, user)
+        : null
+      const [scoresEmailResult] = canScore
+        ? request.yar.flash(SCORES_EMAIL_RESULT_FLASH)
+        : []
       return h.view('gdad/review-person', {
         pageTitle: `GDaD evidence — ${target.name}`,
         skillRows,
@@ -263,7 +278,9 @@ export const gdadReviewRoutes = [
         error: hasError
           ? 'Select valid score values (1, 2, 3 or Not set).'
           : null,
-        errorSkillKey: hasError ? errorSkillKey : null
+        errorSkillKey: hasError ? errorSkillKey : null,
+        scoresEmail,
+        scoresEmailResult: scoresEmailResult ?? null
       })
     }
   },
@@ -288,6 +305,43 @@ export const gdadReviewRoutes = [
 
       await backendApi.saveGdadScores(target.id, scores, request.app.user.id)
       return h.redirect(`/review/gdad-evidence/${target.id}?saved=1`)
+    }
+  },
+  {
+    // Head of Design only: email the person (copying in their line manager)
+    // to say their scores have been updated. Everything is looked up again
+    // from the backend; nothing in the form is trusted.
+    method: 'POST',
+    path: '/review/gdad-evidence/{personId}/notify-scores',
+    async handler(request, h) {
+      const { target, response } = await requireReviewableTarget(request, h)
+      if (response) {
+        return response
+      }
+      const user = request.app.user
+      if (!canScoreGdadEvidenceForTarget(user, target)) {
+        return Boom.forbidden(
+          'Only the Head of Design can email people about their GDaD scores.'
+        )
+      }
+
+      const backToPerson = `/review/gdad-evidence/${target.id}`
+      if (!canOfferScoresEmail()) {
+        request.yar.flash(SCORES_EMAIL_RESULT_FLASH, {
+          kind: 'failed',
+          text: 'Emailing people about their scores is not set up yet.'
+        })
+        return h.redirect(backToPerson)
+      }
+      if (!scoresNotifyStatus(target).hasNewScores) {
+        return h.redirect(backToPerson)
+      }
+
+      request.yar.flash(
+        SCORES_EMAIL_RESULT_FLASH,
+        await sendScoresUpdated(user, target)
+      )
+      return h.redirect(backToPerson)
     }
   },
   {

@@ -274,6 +274,12 @@ export const config = convict({
       default: '',
       env: 'NOTIFY_FEEDBACK_TEMPLATE_ID'
     },
+    scoresUpdatedTemplateId: {
+      doc: 'Notify template for "your GDaD scores have been updated" emails',
+      format: String,
+      default: '',
+      env: 'NOTIFY_SCORES_UPDATED_TEMPLATE_ID'
+    },
     feedbackInboxEmail: {
       doc: 'Inbox that receives service feedback',
       format: String,

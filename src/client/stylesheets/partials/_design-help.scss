@@ -380,3 +380,10 @@ $design-help-border: #b1b4b6;
     padding-top: 15px;
   }
 }
+
+// GDaD review: "tell them about their scores" panel under the scores table
+.gdad-scores-email {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #b1b4b6;
+}

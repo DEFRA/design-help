@@ -120,6 +120,13 @@ export const backendApi = {
       scoredById
     })
   },
+  markGdadScoresNotified(id, notifiedById) {
+    return call(
+      'PUT',
+      `/people/${encodeURIComponent(id)}/gdad/scores-notified`,
+      { notifiedById }
+    )
+  },
   listHelpingPairs() {
     return call('GET', '/helping-pairs')
   },

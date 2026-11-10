@@ -19,6 +19,12 @@ export function isFeedbackNotifyConfigured() {
   )
 }
 
+export function isScoresUpdatedNotifyConfigured() {
+  return Boolean(
+    config.get('notify.apiKey') && config.get('notify.scoresUpdatedTemplateId')
+  )
+}
+
 /**
  * Template personalisation: ((sign_in_link))
  * Outbound Notify calls leave the platform via the CDP forward proxy
@@ -65,4 +71,30 @@ export async function sendFeedbackEmail(personalisation) {
       reference: `design-help-feedback-${Date.now()}`
     }
   )
+}
+
+/**
+ * Tells a designer (or their line manager) that the Head of Design has
+ * updated their GDaD scores. Never includes the scores themselves.
+ * Template personalisation: ((intro)), ((link))
+ */
+export async function sendScoresUpdatedEmail(email, personalisation) {
+  if (!isScoresUpdatedNotifyConfigured()) {
+    if (config.get('isProduction')) {
+      throw new Error('notify_not_configured')
+    }
+    logger.info(
+      `[dev] Scores-updated email for ${email}: ${JSON.stringify(personalisation)}`
+    )
+    return
+  }
+
+  const client = new NotifyClient(config.get('notify.apiKey'))
+  await client.sendEmail(config.get('notify.scoresUpdatedTemplateId'), email, {
+    personalisation: {
+      intro: personalisation.intro,
+      link: personalisation.link
+    },
+    reference: `design-help-scores-updated-${Date.now()}`
+  })
 }

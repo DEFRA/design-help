@@ -78,19 +78,20 @@ GDAD_HEAD_OF_DESIGN_EMAILS=you@defra.gov.uk
 
 Non-secret config lives in `cdp-app-config` per environment; secrets in the CDP Portal Secrets tab. Everything arrives as environment variables and is read once at container start — config changes need a redeploy, not a rebuild.
 
-| Variable                        | Kind       | Purpose                                                                                                                   |
-| ------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `BACKEND_API_URL`               | config     | Base URL of design-help-backend (e.g. `https://design-help-backend.dev.cdp-int.defra.cloud`)                              |
-| `APP_BASE_URL`                  | config     | Public base URL of this service, used to build sign-in links                                                              |
-| `ADMIN_EMAILS`                  | config     | Comma-separated bootstrap admins (always admin, cannot be revoked in-app)                                                 |
-| `GDAD_HEAD_OF_DESIGN_EMAILS`    | config     | Emails allowed the Head of Design super-user role and job title                                                           |
-| `NOTIFY_MAGIC_LINK_TEMPLATE_ID` | config     | Notify template with `((sign_in_link))` personalisation                                                                   |
-| `NOTIFY_FEEDBACK_TEMPLATE_ID`   | config     | Notify template with `((service_name))`, `((feedback_details))`, `((page_path))`, `((contact_email))`, `((signed_in_as))` |
-| `FEEDBACK_INBOX_EMAIL`          | config     | Inbox that receives service feedback                                                                                      |
-| `MAGIC_LINK_TTL`                | config     | Sign-in link TTL in ms (default 15 minutes)                                                                               |
-| `INVITE_LINK_TTL`               | config     | Invite link TTL in ms, for invites sent from Admin (default 7 days)                                                       |
-| `NOTIFY_API_KEY`                | **secret** | GOV.UK Notify API key                                                                                                     |
-| `SESSION_COOKIE_PASSWORD`       | **secret** | At least 32 characters                                                                                                    |
+| Variable                            | Kind       | Purpose                                                                                                                   |
+| ----------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `BACKEND_API_URL`                   | config     | Base URL of design-help-backend (e.g. `https://design-help-backend.dev.cdp-int.defra.cloud`)                              |
+| `APP_BASE_URL`                      | config     | Public base URL of this service, used to build sign-in links                                                              |
+| `ADMIN_EMAILS`                      | config     | Comma-separated bootstrap admins (always admin, cannot be revoked in-app)                                                 |
+| `GDAD_HEAD_OF_DESIGN_EMAILS`        | config     | Emails allowed the Head of Design super-user role and job title                                                           |
+| `NOTIFY_MAGIC_LINK_TEMPLATE_ID`     | config     | Notify template with `((sign_in_link))` personalisation                                                                   |
+| `NOTIFY_FEEDBACK_TEMPLATE_ID`       | config     | Notify template with `((service_name))`, `((feedback_details))`, `((page_path))`, `((contact_email))`, `((signed_in_as))` |
+| `NOTIFY_SCORES_UPDATED_TEMPLATE_ID` | config     | Notify template for "GDaD scores updated" emails, with `((intro))` and `((link))` personalisation (no scores are sent)    |
+| `FEEDBACK_INBOX_EMAIL`              | config     | Inbox that receives service feedback                                                                                      |
+| `MAGIC_LINK_TTL`                    | config     | Sign-in link TTL in ms (default 15 minutes)                                                                               |
+| `INVITE_LINK_TTL`                   | config     | Invite link TTL in ms, for invites sent from Admin (default 7 days)                                                       |
+| `NOTIFY_API_KEY`                    | **secret** | GOV.UK Notify API key                                                                                                     |
+| `SESSION_COOKIE_PASSWORD`           | **secret** | At least 32 characters                                                                                                    |
 
 In production, sign-in is restricted to `@defra.gov.uk` addresses and refuses to run without Notify configured. Outside production any allow-listed address works and links/feedback are logged instead of emailed.
 
