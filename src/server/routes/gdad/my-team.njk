@@ -24,7 +24,7 @@
         <h2 class="govuk-heading-l">{{ "Whole team" if view == 'whole' else "My direct reports" }}</h2>
       {% else %}
         <p class="govuk-body">
-          These are the designers you are the responsible manager for. Open a designer to read their GDaD evidence and see their scores and capability level, so you can plan their next steps together.
+          These are the designers you are the responsible manager for. Open a designer to read their GDaD evidence and see their scores, so you can plan their next steps together.
         </p>
         <p class="govuk-body">Scores are given by the Head of Design.</p>
       {% endif %}
@@ -63,7 +63,7 @@
                 {% endif %}
                 <th scope="col" class="govuk-table__header">Skills with evidence</th>
                 <th scope="col" class="govuk-table__header">Skills scored</th>
-                <th scope="col" class="govuk-table__header">Capability level</th>
+                <th scope="col" class="govuk-table__header">Score</th>
                 <th scope="col" class="govuk-table__header">Last evidence update</th>
                 <th scope="col" class="govuk-table__header">Status</th>
               </tr>
@@ -82,7 +82,7 @@
                   <td class="govuk-table__cell">{{ row.skillsScored }} of {{ skillCount }}</td>
                   <td class="govuk-table__cell">
                     {% if row.capabilityBand.ready and row.capabilityBand.band %}
-                      Level {{ row.capabilityBand.band.level }} — {{ row.capabilityBand.band.rating }}
+                      {{ row.capabilityBand.total }} — {{ row.capabilityBand.band.rating }}
                     {% else %}
                       Not yet
                     {% endif %}

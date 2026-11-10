@@ -385,9 +385,9 @@ describe('#buildAdminExportCsv', () => {
     ])
     const line = csv.split('\n')[1]
 
-    // Best six of [3,3,3,2,2,3,3] is 17 → Accomplished Level 1 (level 5)
+    // Best six of [3,3,3,2,2,3,3] is 17 → Accomplished Level 1
     expect(line).toBe(
-      'Test Person,Lead Service Designer,G6,3,3,3,2,2,3,3,17,5,,'
+      'Test Person,Lead Service Designer,G6,3,3,3,2,2,3,3,17,Accomplished Level 1,,'
     )
   })
 
@@ -407,7 +407,7 @@ describe('#buildAdminExportCsv', () => {
     const [header, first, second] = csv.split('\n')
     expect(header.endsWith(',Capability Level Change,Line manager')).toBe(true)
     expect(first).toBe(
-      'Has Manager,Design Manager,G7,3,3,3,2,2,3,3,17,5,,,Pat Manager'
+      'Has Manager,Design Manager,G7,3,3,3,2,2,3,3,17,Accomplished Level 1,,,Pat Manager'
     )
     expect(second).toBe('No Manager,Service Designer,SEO,,,,,,,,,,,,')
   })
@@ -417,7 +417,7 @@ describe('#buildAdminExportCsv', () => {
       { name: 'Test Manager', role: 'Design Manager', ...fullScores }
     ])
     expect(csv.split('\n')[1]).toBe(
-      'Test Manager,Design Manager,G7,3,3,3,2,2,3,3,17,5,,'
+      'Test Manager,Design Manager,G7,3,3,3,2,2,3,3,17,Accomplished Level 1,,'
     )
   })
 
@@ -445,9 +445,9 @@ describe('#buildAdminExportCsv', () => {
     const csvSix = buildAdminExportCsv([
       { name: 'Six', role: 'Service Designer', ...sixScores }
     ])
-    // [3,3,3,2,2,3] totals 16 → Accomplished Level 1 (level 5)
+    // [3,3,3,2,2,3] totals 16 → Accomplished Level 1
     expect(csvSix.split('\n')[1]).toBe(
-      'Six,Service Designer,SEO,3,3,3,2,2,3,,16,5,,'
+      'Six,Service Designer,SEO,3,3,3,2,2,3,,16,Accomplished Level 1,,'
     )
 
     const fiveScores = { ...sixScores, iterative_design: null }

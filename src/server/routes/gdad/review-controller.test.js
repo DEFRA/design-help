@@ -666,7 +666,7 @@ describe('#gdadReviewRoutes access', () => {
       expect(order).toEqual([...order].sort((a, b) => a - b))
     })
 
-    test('Shows the capability level once six skills are scored', async () => {
+    test('Shows the score and rating once six skills are scored', async () => {
       const keys = [
         'design_communication',
         'designing_for_everyone',
@@ -681,7 +681,13 @@ describe('#gdadReviewRoutes access', () => {
       )
       mockState.people = team({ 'Eve Banded': gdad, 'Fin Unbanded': {} })
       const { result } = await get(users.manager, '/my-team')
-      expect(rowFor(result, 'Eve Banded')).toMatch(/Level \d — /)
+      // Six scores of 2 total 12 → Proficient Level 2
+      expect(rowFor(result, 'Eve Banded')).toContain('12 — Proficient Level 2')
+      expect(rowFor(result, 'Eve Banded')).not.toMatch(/Level \d — /)
+      expect(result).toContain(
+        '<th scope="col" class="govuk-table__header">Score</th>'
+      )
+      expect(result).not.toContain('Capability level')
       expect(rowFor(result, 'Eve Banded')).toContain('6 of 7')
       expect(rowFor(result, 'Fin Unbanded')).toContain('Not yet')
     })

@@ -587,7 +587,7 @@ export function buildAdminExportCsv(rows, { includeLineManager = false } = {}) {
       ...scoreList.map((s) => (s == null ? '' : s)),
       total,
       capabilityBand && capabilityBand.ready && capabilityBand.band
-        ? capabilityBand.band.level
+        ? capabilityBand.band.rating
         : '',
       '',
       '',
