@@ -110,6 +110,7 @@ export const myProfileRoutes = [
         pageTitle: 'My profile',
         profile: hasProfile ? person : null,
         helpingPeople,
+        publicProfilePath: hasProfile ? personPath(person) : null,
         gdadEvidenceApplicable:
           hasProfile && isGdadEvidenceApplicableRole(person.role)
       })

@@ -40,14 +40,46 @@
               </dd>
             </div>
           {% endif %}
+          {% if profile.contactEmail and profile.email and profile.contactEmail != profile.email %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Contact email</dt>
+              <dd class="govuk-summary-list__value">
+                <a class="govuk-link" href="mailto:{{ profile.contactEmail }}">{{ profile.contactEmail }}</a>
+              </dd>
+            </div>
+          {% endif %}
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">Job title</dt>
             <dd class="govuk-summary-list__value">{{ profile.role }}</dd>
           </div>
+          {% if profile.projectTeam %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Project team</dt>
+              <dd class="govuk-summary-list__value">{{ profile.projectTeam }}</dd>
+            </div>
+          {% endif %}
+          {% if profile.deliveryGroup %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Delivery group</dt>
+              <dd class="govuk-summary-list__value">{{ profile.deliveryGroup }}</dd>
+            </div>
+          {% endif %}
+          {% if profile.location %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Location</dt>
+              <dd class="govuk-summary-list__value">{{ profile.location }}</dd>
+            </div>
+          {% endif %}
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">Availability</dt>
             <dd class="govuk-summary-list__value">{{ profile.availabilityStatus }}</dd>
           </div>
+          {% if profile.experience %}
+            <div class="govuk-summary-list__row">
+              <dt class="govuk-summary-list__key">Experience</dt>
+              <dd class="govuk-summary-list__value">{{ profile.experience }}</dd>
+            </div>
+          {% endif %}
           {% if helpingPeople.length %}
             <div class="govuk-summary-list__row">
               <dt class="govuk-summary-list__key">Long-term help (who I&rsquo;m helping)</dt>
@@ -62,13 +94,13 @@
           {% endif %}
         </dl>
 
-        {% if profile.canHelpWith and profile.canHelpWith.length %}
-          <h2 class="govuk-heading-m">Can help with tags</h2>
-          <ul class="govuk-list govuk-list--bullet">
-            {% for item in profile.canHelpWith %}
-              <li>{{ item }}</li>
-            {% endfor %}
-          </ul>
+        {% set member = profile %}
+        {% include "partials/profile-free-text.njk" %}
+
+        {% if publicProfilePath %}
+          <p class="govuk-body govuk-!-margin-top-6">
+            <a class="govuk-link" href="{{ publicProfilePath }}">See your profile as others see it</a>
+          </p>
         {% endif %}
       {% else %}
         <p class="govuk-body">You do not have a profile yet.</p>

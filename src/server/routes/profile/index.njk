@@ -65,37 +65,7 @@
         {% endif %}
       </dl>
 
-      {% if member.canHelpWith and member.canHelpWith.length %}
-        <h2 class="govuk-heading-m">Can help with</h2>
-        <ul class="govuk-list govuk-list--bullet">
-          {% for help in member.canHelpWith %}
-            <li>{{ help }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-
-      {% if member.canHelpWithText %}
-        {{ member.canHelpWithText | markdownToGovukHtml }}
-      {% endif %}
-
-      {% if member.developmentGoalsText %}
-        <h2 class="govuk-heading-m">What I would like help with</h2>
-        {{ member.developmentGoalsText | markdownToGovukHtml }}
-      {% endif %}
-
-      {% if member.bio %}
-        <h2 class="govuk-heading-m">About</h2>
-        {{ member.bio | markdownToGovukHtml }}
-      {% endif %}
-
-      {% if member.linkedinProfile %}
-        <h2 class="govuk-heading-m">LinkedIn</h2>
-        <p class="govuk-body">
-          <a class="govuk-link" href="{{ member.linkedinProfile }}" target="_blank" rel="noreferrer noopener">
-            {{ member.linkedinProfile }}
-          </a>
-        </p>
-      {% endif %}
+      {% include "partials/profile-free-text.njk" %}
 
     </div>
 
