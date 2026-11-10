@@ -495,6 +495,79 @@ describe('#gdad scores-updated email', () => {
       )
     })
 
+    test('Same score with evidence updated since it was scored is saved, and the email button comes back', async () => {
+      const person = mockState.people.find((p) => p.id === ids.alreadyTold)
+      person.gdad = {
+        ...scoredGdad,
+        iterative_design: {
+          ...scoredGdad.iterative_design,
+          evidenceUpdatedAt: '2026-11-02T10:00:00.000Z'
+        }
+      }
+
+      const response = await post(
+        users.hod,
+        personUrl(ids.alreadyTold),
+        allScores
+      )
+      expect(response.headers.location).toBe(
+        `${personUrl(ids.alreadyTold)}?saved=1`
+      )
+      // Only the skill with new evidence; the other is untouched
+      expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
+        ids.alreadyTold,
+        { iterative_design: 2 },
+        ids.hod
+      )
+
+      // The backend re-stamps scoredAt, so there is something new to tell
+      person.gdad.iterative_design.scoredAt = '2026-11-10T12:00:00.000Z'
+      const { result } = await get(users.hod, response.headers.location)
+      expect(result).toContain('Scores saved.')
+      expect(result).toContain(BUTTON_TEXT)
+    })
+
+    test('Same score with no evidence since it was scored is not saved', async () => {
+      const person = mockState.people.find((p) => p.id === ids.alreadyTold)
+      person.gdad = {
+        ...scoredGdad,
+        iterative_design: {
+          ...scoredGdad.iterative_design,
+          evidenceUpdatedAt: '2026-10-20T10:00:00.000Z'
+        }
+      }
+      const response = await post(
+        users.hod,
+        personUrl(ids.alreadyTold),
+        allScores
+      )
+      expect(response.headers.location).toBe(
+        `${personUrl(ids.alreadyTold)}?saved=none`
+      )
+      expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
+    })
+
+    test('Single-skill save of the same score after new evidence is saved', async () => {
+      const person = mockState.people.find((p) => p.id === ids.alreadyTold)
+      person.gdad = {
+        ...scoredGdad,
+        design_communication: {
+          ...scoredGdad.design_communication,
+          evidenceUpdatedAt: '2026-11-07T10:00:00.000Z'
+        }
+      }
+      const url = `${personUrl(ids.alreadyTold)}/design_communication`
+      const response = await post(users.hod, url, {
+        score_design_communication: '3'
+      })
+      expect(response.headers.location).toBe(`${url}?saved=1`)
+      expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
+        ids.alreadyTold,
+        { design_communication: 3 },
+        ids.hod
+      )
+    })
+
     test('Single-skill save with the same score saves nothing', async () => {
       const url = `${personUrl(ids.alreadyTold)}/design_communication`
       const response = await post(users.hod, url, {

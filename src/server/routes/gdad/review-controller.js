@@ -167,16 +167,36 @@ function normaliseScore(value) {
   return value == null || value === '' ? null : Number(value)
 }
 
+function isAfter(a, b) {
+  const first = a ? new Date(a) : null
+  const second = b ? new Date(b) : null
+  return Boolean(
+    first &&
+    second &&
+    !Number.isNaN(first.getTime()) &&
+    !Number.isNaN(second.getTime()) &&
+    first > second
+  )
+}
+
 /**
- * Only the skills whose score is different from the one already saved.
- * The backend stamps `scoredAt` on every skill it is sent, so sending
- * unchanged scores would make them look newly scored.
+ * The skills to send to the backend: those whose score is different from
+ * the one already saved, plus those re-confirmed with the same score after
+ * the designer updated the evidence (saving marks the new evidence as
+ * reviewed and clears "Waiting for a score"). The backend stamps
+ * `scoredAt` on every skill it is sent, so sending other unchanged scores
+ * would make them look newly scored.
  */
 export function changedScores(target, scores) {
   const saved = target?.gdad ?? {}
   const changed = {}
   for (const [key, score] of Object.entries(scores)) {
-    if (normaliseScore(saved[key]?.officialScore) !== normaliseScore(score)) {
+    const entry = saved[key] ?? {}
+    const newScore = normaliseScore(score)
+    const scoreChanged = normaliseScore(entry.officialScore) !== newScore
+    const reviewsNewEvidence =
+      newScore != null && isAfter(entry.evidenceUpdatedAt, entry.scoredAt)
+    if (scoreChanged || reviewsNewEvidence) {
       changed[key] = score
     }
   }
