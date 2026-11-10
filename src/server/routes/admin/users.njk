@@ -31,7 +31,11 @@
         {% endif %}
       {% endif %}
 
-      <p class="govuk-body">Add people, set their job title and line manager, and give or remove admin access. People marked Pending haven’t signed in yet.</p>
+      {% if user.isHeadOfDesignSuperUser %}
+        <p class="govuk-body">Add people, set their job title and line manager, and give or remove admin access. People marked Pending haven’t signed in yet.</p>
+      {% else %}
+        <p class="govuk-body">Add people and send them a sign-in link. People marked Pending haven’t signed in yet.</p>
+      {% endif %}
 
       <p class="govuk-body govuk-!-margin-bottom-6">
         <a class="govuk-button" data-module="govuk-button" href="/admin/people/new">Add a person</a>

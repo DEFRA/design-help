@@ -144,6 +144,24 @@ describe('#addPersonRoutes', () => {
   }
 
   describe('People and access page', () => {
+    const hodIntro =
+      'Add people, set their job title and line manager, and give or remove admin access. People marked Pending haven’t signed in yet.'
+    const adminIntro =
+      'Add people and send them a sign-in link. People marked Pending haven’t signed in yet.'
+
+    test('Head of Design sees the full intro', async () => {
+      const { result } = await get(users.hod, '/admin/users')
+      expect(result).toContain(hodIntro)
+      expect(result).not.toContain(adminIntro)
+    })
+
+    test('Other admins see the intro without Change-only tasks', async () => {
+      const { result } = await get(users.admin, '/admin/users')
+      expect(result).toContain(adminIntro)
+      expect(result).not.toContain(hodIntro)
+      expect(result).not.toContain('give or remove admin access')
+    })
+
     test.each([
       ['Head of Design', 'hod'],
       ['other admin', 'admin']
@@ -154,9 +172,6 @@ describe('#addPersonRoutes', () => {
         expect(statusCode).toBe(statusCodes.ok)
         expect(result).toContain(
           '<h1 class="govuk-heading-xl">People and access</h1>'
-        )
-        expect(result).toContain(
-          'Add people, set their job title and line manager, and give or remove admin access. People marked Pending haven’t signed in yet.'
         )
         expect(result.match(/>Add a person</g)).toHaveLength(1)
         expect(result).toContain('href="/admin/people/new"')
@@ -305,8 +320,28 @@ describe('#addPersonRoutes', () => {
 
       const { result } = await get(users.admin, headers.location)
       expect(result).toContain(
+        'Nia New has been added. You can send them an invite.'
+      )
+      expect(result).not.toContain('Use Change')
+    })
+
+    test('Head of Design is told to use Change in the banner', async () => {
+      const { headers } = await post(users.hod, '/admin/people/new', valid)
+      const { result } = await get(users.hod, headers.location)
+      expect(result).toContain(
         'Nia New has been added. Use Change to set their job title and line manager, or send them an invite.'
       )
+    })
+
+    test('A POST without the CSRF crumb is refused and creates nothing', async () => {
+      mockState.user = users.admin
+      const { statusCode } = await server.inject({
+        method: 'POST',
+        url: '/admin/people/new',
+        payload: valid
+      })
+      expect(statusCode).toBe(statusCodes.forbidden)
+      expect(backendApi.createPerson).not.toHaveBeenCalled()
     })
 
     test('Their row shows Pending and Send invite, with no job title yet', async () => {

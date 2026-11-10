@@ -28,7 +28,10 @@ function teamMemberSavedBanner(query, people, user) {
     return null
   }
   if (query.saved === 'added') {
-    return `${person.name} has been added. Use Change to set their job title and line manager, or send them an invite.`
+    // Only the Head of Design has Change on People and access.
+    return user?.isHeadOfDesignSuperUser
+      ? `${person.name} has been added. Use Change to set their job title and line manager, or send them an invite.`
+      : `${person.name} has been added. You can send them an invite.`
   }
   if (!user?.isHeadOfDesignSuperUser) {
     return null
