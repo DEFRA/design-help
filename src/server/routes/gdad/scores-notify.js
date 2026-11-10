@@ -126,6 +126,41 @@ export async function buildScoresEmailPanel(target, sender) {
   }
 }
 
+/**
+ * The person as they will be once `changed` scores are saved: the backend
+ * stamps `scoredAt` on each skill given a score and blanks it on each
+ * skill whose score is cleared.
+ */
+export function withSavedScores(target, changed, now = new Date()) {
+  const gdad = { ...(target?.gdad ?? {}) }
+  for (const [key, score] of Object.entries(changed)) {
+    const cleared = score == null || score === ''
+    gdad[key] = {
+      ...(gdad[key] ?? {}),
+      officialScore: cleared ? null : score,
+      scoredAt: cleared ? null : now.toISOString()
+    }
+  }
+  return { ...target, gdad }
+}
+
+/**
+ * Whether saving `changed` leaves something to email the person about, so
+ * the Head of Design should be offered the email straight away.
+ */
+export function shouldOfferEmailAfterSave(target, changed) {
+  return (
+    canOfferScoresEmail() &&
+    scoresNotifyStatus(withSavedScores(target, changed)).hasNewScores
+  )
+}
+
+/** "Ada’s", or "James’" for a name ending in s. */
+export function possessive(name) {
+  const text = String(name ?? '')
+  return /s$/i.test(text) ? `${text}’` : `${text}’s`
+}
+
 function personalisationFor(sender, target, { forManager }) {
   const senderName = sender?.name || 'The Head of Design'
   const baseUrl = config.get('appBaseUrl')
@@ -202,7 +237,7 @@ export async function sendScoresUpdated(sender, target) {
   return {
     kind: 'success',
     text: manager
-      ? `Email sent to ${target.name} and ${managerLabel(manager)}.`
+      ? `Email sent to ${target.name}. ${managerLabel(manager)} was copied in.`
       : `Email sent to ${target.name}.`
   }
 }

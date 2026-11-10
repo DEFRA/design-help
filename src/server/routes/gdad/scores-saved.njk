@@ -1,0 +1,24 @@
+{% extends 'layouts/page.njk' %}
+{% from "partials/gdad.njk" import gdadScoresEmailForm %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <a class="govuk-back-link" href="/review/gdad-evidence/{{ targetPersonId }}">Back</a>
+
+      <h1 class="govuk-heading-l">Scores saved for {{ targetName }}</h1>
+
+      {{ gdadScoresEmailForm({
+        targetPersonId: targetPersonId,
+        targetName: targetName,
+        managerName: managerName,
+        crumb: crumb
+      }) }}
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="/review/gdad-evidence/{{ targetPersonId }}">Not now, back to {{ targetNamePossessive }} evidence</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}

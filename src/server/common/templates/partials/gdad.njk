@@ -9,6 +9,7 @@
 #}
 
 {% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
 
 {% macro gdadScoreText(skill) %}
   {%- if skill.officialScore -%}
@@ -172,4 +173,25 @@
       </dd>
     </div>
   </dl>
+{% endmacro %}
+
+{#
+  The Head of Design's "Email <name>" form: the same words on the page
+  shown straight after saving scores (primary button) and at the bottom of
+  the person's evidence page (secondary button).
+#}
+{% macro gdadScoresEmailForm(params) %}
+  <p class="govuk-body">You can email {{ params.targetName }} to tell them their scores have been updated. The email links to their GDaD evidence in Design Help. It does not include their scores.</p>
+  {% if params.managerName %}
+    <p class="govuk-body" id="scores-email-copy">Their line manager, {{ params.managerName }}, will be copied in.</p>
+  {% endif %}
+  <form method="post" action="/review/gdad-evidence/{{ params.targetPersonId }}/notify-scores" novalidate>
+    <input type="hidden" name="crumb" value="{{ params.crumb }}">
+    {{ govukButton({
+      text: "Email " + params.targetName,
+      classes: "govuk-button--secondary" if params.secondary else "",
+      preventDoubleClick: true,
+      attributes: { "aria-describedby": "scores-email-copy" } if params.managerName else {}
+    }) }}
+  </form>
 {% endmacro %}

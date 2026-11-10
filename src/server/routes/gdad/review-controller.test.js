@@ -351,7 +351,7 @@ describe('#gdadReviewRoutes access', () => {
         scorePayload
       )
       expect(statusCode).toBe(302)
-      expect(headers.location).toContain('saved=1')
+      expect(headers.location).toBe(`/review/gdad-evidence/${id}/scores-saved`)
       expect(backendApi.saveGdadScores).toHaveBeenCalledTimes(1)
       const [savedId, scores, reviewerId] =
         backendApi.saveGdadScores.mock.calls[0]

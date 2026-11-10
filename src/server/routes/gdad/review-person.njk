@@ -1,5 +1,5 @@
 {% extends 'layouts/page.njk' %}
-{% from "partials/gdad.njk" import gdadFrameworkLinks, gdadCapabilityPanel, gdadSkillsTable %}
+{% from "partials/gdad.njk" import gdadFrameworkLinks, gdadCapabilityPanel, gdadSkillsTable, gdadScoresEmailForm %}
 
 {% block content %}
   <div class="govuk-grid-row">
@@ -14,28 +14,7 @@
         }) }}
       {% endif %}
 
-      <span class="govuk-caption-l">{{ targetName }} · {{ targetRole }}</span>
-      <h1 class="govuk-heading-xl">GDaD evidence</h1>
-
-      {% if justSaved and canEditScores %}
-        {% if scoresEmail and scoresEmail.state == "ready" %}
-          {% set savedHtml %}
-            <p class="govuk-notification-banner__heading">Scores saved.</p>
-            <p class="govuk-body"><a class="govuk-notification-banner__link" href="#scores-email">Email {{ targetName }} to tell them their scores have been updated</a></p>
-          {% endset %}
-          {{ govukNotificationBanner({ type: "success", html: savedHtml }) }}
-        {% else %}
-          {{ govukNotificationBanner({
-            type: "success",
-            text: "Scores saved."
-          }) }}
-        {% endif %}
-      {% endif %}
-
-      {% if nothingChanged and canEditScores %}
-        {{ govukNotificationBanner({ text: "No scores were changed." }) }}
-      {% endif %}
-
+      {# Banners sit at the very top, so they are seen without scrolling #}
       {% if scoresEmailResult and canEditScores %}
         {% if scoresEmailResult.kind == "success" %}
           {{ govukNotificationBanner({ type: "success", text: scoresEmailResult.text }) }}
@@ -45,6 +24,17 @@
           {{ govukNotificationBanner({ titleText: "Email not sent", text: scoresEmailResult.text }) }}
         {% endif %}
       {% endif %}
+
+      {% if justSaved and canEditScores %}
+        {{ govukNotificationBanner({ type: "success", text: "Scores saved." }) }}
+      {% endif %}
+
+      {% if nothingChanged and canEditScores %}
+        {{ govukNotificationBanner({ text: "No scores were changed." }) }}
+      {% endif %}
+
+      <span class="govuk-caption-l">{{ targetName }} · {{ targetRole }}</span>
+      <h1 class="govuk-heading-xl">GDaD evidence</h1>
 
       {{ gdadFrameworkLinks({
         frameworkRoleLabel: frameworkRoleLabel,
@@ -78,19 +68,13 @@
               {% if scoresEmail.lastSentLabel %}
                 <p class="govuk-body">Last emailed on {{ scoresEmail.lastSentLabel }}.</p>
               {% endif %}
-              <p class="govuk-body">The email links to their GDaD evidence in Design Help. It does not include their scores.</p>
-              <form method="post" action="/review/gdad-evidence/{{ targetPersonId }}/notify-scores" novalidate>
-                <input type="hidden" name="crumb" value="{{ crumb }}">
-                {% if scoresEmail.managerName %}
-                  <div id="scores-email-hint" class="govuk-hint">Their line manager, {{ scoresEmail.managerName }}, will be copied in.</div>
-                {% endif %}
-                {{ govukButton({
-                  text: "Email " + targetName + " to tell them their scores have been updated",
-                  classes: "govuk-button--secondary",
-                  preventDoubleClick: true,
-                  attributes: { "aria-describedby": "scores-email-hint" } if scoresEmail.managerName else {}
-                }) }}
-              </form>
+              {{ gdadScoresEmailForm({
+                targetPersonId: targetPersonId,
+                targetName: targetName,
+                managerName: scoresEmail.managerName,
+                crumb: crumb,
+                secondary: true
+              }) }}
             {% else %}
               <p class="govuk-body">{{ targetName }} was emailed about their scores on {{ scoresEmail.lastSentLabel }}.</p>
             {% endif %}

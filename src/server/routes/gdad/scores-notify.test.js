@@ -8,7 +8,9 @@ import { sendScoresUpdatedEmail } from '#/server/common/helpers/notify.js'
 import {
   buildScoresEmailPanel,
   formatNotifiedDate,
-  scoresNotifyStatus
+  possessive,
+  scoresNotifyStatus,
+  withSavedScores
 } from './scores-notify.js'
 
 /*
@@ -189,7 +191,23 @@ function buildPeople() {
 
 const personUrl = (id) => `/review/gdad-evidence/${id}`
 const notifyUrl = (id) => `/review/gdad-evidence/${id}/notify-scores`
+const scoresSavedUrl = (id) => `/review/gdad-evidence/${id}/scores-saved`
 const BUTTON_TEXT = 'to tell them their scores have been updated'
+const SENTENCE =
+  'to tell them their scores have been updated. The email links to their GDaD evidence in Design Help. It does not include their scores.'
+
+/** The govukButton element with this exact text, and its classes. */
+function buttonFor(html, text) {
+  const match = html.match(
+    new RegExp(`<button[^>]*class="([^"]*)"[^>]*>\\s*${text}\\s*</button>`)
+  )
+  return match ? { classes: match[1] } : null
+}
+
+/** Where the main heading starts, to check banners come before it. */
+function h1Index(html) {
+  return html.indexOf('<h1')
+}
 
 function sessionCookie(response) {
   const cookies = [response.headers['set-cookie'] ?? []].flat()
@@ -252,7 +270,10 @@ describe('#gdad scores-updated email', () => {
     test('Head of Design sees the button, the copy-in hint and a crumb', async () => {
       const { statusCode, result } = await get(users.hod, personUrl(ids.scored))
       expect(statusCode).toBe(statusCodes.ok)
-      expect(result).toContain(`Email Ada Scored ${BUTTON_TEXT}`)
+      expect(result).toContain(`You can email Ada Scored ${SENTENCE}`)
+      expect(buttonFor(result, 'Email Ada Scored').classes).toContain(
+        'govuk-button--secondary'
+      )
       expect(result).toContain(
         'Their line manager, Mo Manager, will be copied in.'
       )
@@ -268,7 +289,7 @@ describe('#gdad scores-updated email', () => {
         (p) => p.id === ids.alreadyTold
       ).gdadScoresNotifiedAt = '2026-11-03T09:00:00.000Z'
       const { result } = await get(users.hod, personUrl(ids.alreadyTold))
-      expect(result).toContain(`Email Bea Told ${BUTTON_TEXT}`)
+      expect(buttonFor(result, 'Email Bea Told')).not.toBeNull()
       expect(result).toContain('Last emailed on 3 November 2026.')
     })
 
@@ -294,13 +315,16 @@ describe('#gdad scores-updated email', () => {
       }
     })
 
-    test('Saved banner links to the email button', async () => {
+    test('Saved banner is just "Scores saved.", at the top, with no jump link', async () => {
       const { result } = await get(
         users.hod,
         `${personUrl(ids.scored)}?saved=1`
       )
       expect(result).toContain('Scores saved.')
-      expect(result).toContain('href="#scores-email"')
+      expect(result.indexOf('Scores saved.')).toBeLessThan(h1Index(result))
+      expect(result).not.toContain('href="#scores-email"')
+      // The bottom section is still there as a fallback
+      expect(buttonFor(result, 'Email Ada Scored')).not.toBeNull()
     })
 
     test('Line manager does not see the button', async () => {
@@ -348,7 +372,19 @@ describe('#gdad scores-updated email', () => {
         ids.scored,
         ids.hod
       )
-      expect(page.result).toContain('Email sent to Ada Scored and Mo Manager.')
+      expect(page.result).toContain(
+        'Email sent to Ada Scored. Mo Manager was copied in.'
+      )
+    })
+
+    test('Success banner is at the very top, shown once, with no jump link', async () => {
+      const { page } = await postAndFollow(users.hod, notifyUrl(ids.scored))
+      const { result } = page
+      const text = 'Email sent to Ada Scored. Mo Manager was copied in.'
+      expect(result.split(text)).toHaveLength(2)
+      expect(result.indexOf(text)).toBeLessThan(h1Index(result))
+      expect(result).toContain('govuk-notification-banner--success')
+      expect(result).not.toContain('href="#scores-email"')
     })
 
     test('Ignores any addresses in the form', async () => {
@@ -365,6 +401,10 @@ describe('#gdad scores-updated email', () => {
       expect(sendScoresUpdatedEmail).toHaveBeenCalledTimes(1)
       expect(sendScoresUpdatedEmail.mock.calls[0][0]).toBe('dee@example.test')
       expect(page.result).toContain('Email sent to Dee Unallocated.')
+      expect(page.result).not.toContain('was copied in')
+      expect(
+        page.result.indexOf('Email sent to Dee Unallocated.')
+      ).toBeLessThan(h1Index(page.result))
     })
 
     test('If the designer email fails, nothing is recorded and an error shows', async () => {
@@ -372,9 +412,9 @@ describe('#gdad scores-updated email', () => {
       const { page } = await postAndFollow(users.hod, notifyUrl(ids.scored))
       expect(sendScoresUpdatedEmail).toHaveBeenCalledTimes(1)
       expect(backendApi.markGdadScoresNotified).not.toHaveBeenCalled()
-      expect(page.result).toContain(
-        'Couldn’t send the email to Ada Scored. Try again later.'
-      )
+      const text = 'Couldn’t send the email to Ada Scored. Try again later.'
+      expect(page.result).toContain(text)
+      expect(page.result.indexOf(text)).toBeLessThan(h1Index(page.result))
     })
 
     test('If the line manager copy fails, still records and says so', async () => {
@@ -383,7 +423,9 @@ describe('#gdad scores-updated email', () => {
         .mockRejectedValueOnce(new Error('notify down'))
       const { page } = await postAndFollow(users.hod, notifyUrl(ids.scored))
       expect(backendApi.markGdadScoresNotified).toHaveBeenCalledTimes(1)
-      expect(page.result).toContain('we couldn’t send the copy to Mo Manager')
+      const text = 'we couldn’t send the copy to Mo Manager'
+      expect(page.result).toContain(text)
+      expect(page.result.indexOf(text)).toBeLessThan(h1Index(page.result))
     })
 
     test('If recording fails, still shows success', async () => {
@@ -392,7 +434,9 @@ describe('#gdad scores-updated email', () => {
       )
       const { page } = await postAndFollow(users.hod, notifyUrl(ids.scored))
       expect(sendScoresUpdatedEmail).toHaveBeenCalledTimes(2)
-      expect(page.result).toContain('Email sent to Ada Scored and Mo Manager.')
+      expect(page.result).toContain(
+        'Email sent to Ada Scored. Mo Manager was copied in.'
+      )
     })
 
     test('Sends nothing when there is nothing new to tell them', async () => {
@@ -421,6 +465,70 @@ describe('#gdad scores-updated email', () => {
       })
       expect(response.statusCode).toBe(statusCodes.forbidden)
       expect(sendScoresUpdatedEmail).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('After saving changed scores', () => {
+    test.each([
+      ['whole-person save', (id) => personUrl(id)],
+      ['single-skill save', (id) => `${personUrl(id)}/design_communication`]
+    ])('%s goes to the scores-saved page', async (_label, url) => {
+      const response = await post(users.hod, url(ids.alreadyTold), {
+        score_design_communication: '1',
+        score_iterative_design: '2'
+      })
+      expect(response.statusCode).toBe(302)
+      expect(response.headers.location).toBe(scoresSavedUrl(ids.alreadyTold))
+      expect(backendApi.saveGdadScores).toHaveBeenCalledTimes(1)
+    })
+
+    test('Scores-saved page offers one green Email button, with the line manager copied in', async () => {
+      const { statusCode, result } = await get(
+        users.hod,
+        scoresSavedUrl(ids.scored)
+      )
+      expect(statusCode).toBe(statusCodes.ok)
+      expect(result).toContain('Scores saved for Ada Scored</h1>')
+      expect(result).toContain(`You can email Ada Scored ${SENTENCE}`)
+      expect(result).toContain(
+        'Their line manager, Mo Manager, will be copied in.'
+      )
+      expect(result).toContain(`action="${notifyUrl(ids.scored)}"`)
+      expect(result).toMatch(
+        /notify-scores" novalidate>\s*<input type="hidden" name="crumb" value="[^"]+">/
+      )
+      const button = buttonFor(result, 'Email Ada Scored')
+      expect(button).not.toBeNull()
+      expect(button.classes).not.toContain('govuk-button--secondary')
+      const main = result.slice(result.indexOf('<main'))
+      expect(main.match(/<button/g)).toHaveLength(1)
+      expect(result).toContain(
+        `class="govuk-back-link" href="${personUrl(ids.scored)}"`
+      )
+      expect(result).toContain(
+        `<a class="govuk-link" href="${personUrl(ids.scored)}">Not now, back to Ada Scored’s evidence</a>`
+      )
+    })
+
+    test('Scores-saved page leaves out the copy-in line with no line manager', async () => {
+      const { result } = await get(users.hod, scoresSavedUrl(ids.noManager))
+      expect(result).toContain('Email Dee Unallocated')
+      expect(result).not.toContain('will be copied in')
+    })
+
+    test('Scores-saved page goes back to the evidence page when already emailed', async () => {
+      const response = await get(users.hod, scoresSavedUrl(ids.alreadyTold))
+      expect(response.statusCode).toBe(302)
+      expect(response.headers.location).toBe(personUrl(ids.alreadyTold))
+    })
+
+    test.each([
+      ['line manager of the person', 'manager'],
+      ['the designer themselves', 'designer'],
+      ['plain admin who is not the Head of Design', 'admin']
+    ])('Scores-saved page is refused (403) for the %s', async (_label, who) => {
+      const response = await get(users[who], scoresSavedUrl(ids.scored))
+      expect(response.statusCode).toBe(statusCodes.forbidden)
     })
   })
 
@@ -474,9 +582,7 @@ describe('#gdad scores-updated email', () => {
         ...allScores,
         score_iterative_design: '3'
       })
-      expect(response.headers.location).toBe(
-        `${personUrl(ids.alreadyTold)}?saved=1`
-      )
+      expect(response.headers.location).toBe(scoresSavedUrl(ids.alreadyTold))
       expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
         ids.alreadyTold,
         { iterative_design: 3 },
@@ -484,10 +590,13 @@ describe('#gdad scores-updated email', () => {
       )
     })
 
-    test('Clearing a score counts as a change', async () => {
-      await post(users.hod, personUrl(ids.alreadyTold), {
+    test('Clearing a score counts as a change, but leaves nothing to email about', async () => {
+      const response = await post(users.hod, personUrl(ids.alreadyTold), {
         score_design_communication: '3'
       })
+      expect(response.headers.location).toBe(
+        `${personUrl(ids.alreadyTold)}?saved=1`
+      )
       expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
         ids.alreadyTold,
         { iterative_design: null },
@@ -510,9 +619,7 @@ describe('#gdad scores-updated email', () => {
         personUrl(ids.alreadyTold),
         allScores
       )
-      expect(response.headers.location).toBe(
-        `${personUrl(ids.alreadyTold)}?saved=1`
-      )
+      expect(response.headers.location).toBe(scoresSavedUrl(ids.alreadyTold))
       // Only the skill with new evidence; the other is untouched
       expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
         ids.alreadyTold,
@@ -523,7 +630,7 @@ describe('#gdad scores-updated email', () => {
       // The backend re-stamps scoredAt, so there is something new to tell
       person.gdad.iterative_design.scoredAt = '2026-11-10T12:00:00.000Z'
       const { result } = await get(users.hod, response.headers.location)
-      expect(result).toContain('Scores saved.')
+      expect(result).toContain('Scores saved for Bea Told')
       expect(result).toContain(BUTTON_TEXT)
     })
 
@@ -560,7 +667,7 @@ describe('#gdad scores-updated email', () => {
       const response = await post(users.hod, url, {
         score_design_communication: '3'
       })
-      expect(response.headers.location).toBe(`${url}?saved=1`)
+      expect(response.headers.location).toBe(scoresSavedUrl(ids.alreadyTold))
       expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
         ids.alreadyTold,
         { design_communication: 3 },
@@ -585,7 +692,7 @@ describe('#gdad scores-updated email', () => {
       const response = await post(users.hod, url, {
         score_design_communication: '1'
       })
-      expect(response.headers.location).toBe(`${url}?saved=1`)
+      expect(response.headers.location).toBe(scoresSavedUrl(ids.alreadyTold))
       expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
         ids.alreadyTold,
         { design_communication: 1 },
@@ -609,6 +716,26 @@ describe('#gdad scores-updated email', () => {
     test('Shows no button', async () => {
       const { result } = await get(users.hod, personUrl(ids.scored))
       expect(result).not.toContain(BUTTON_TEXT)
+    })
+
+    test('Saving changed scores goes back to the page with "Scores saved."', async () => {
+      for (const url of [
+        personUrl(ids.scored),
+        `${personUrl(ids.scored)}/design_communication`
+      ]) {
+        backendApi.saveGdadScores.mockClear()
+        const response = await post(users.hod, url, {
+          score_design_communication: '1'
+        })
+        expect(response.headers.location).toBe(`${url}?saved=1`)
+        expect(backendApi.saveGdadScores).toHaveBeenCalledTimes(1)
+      }
+    })
+
+    test('The scores-saved page sends you back to the evidence page', async () => {
+      const response = await get(users.hod, scoresSavedUrl(ids.scored))
+      expect(response.statusCode).toBe(302)
+      expect(response.headers.location).toBe(personUrl(ids.scored))
     })
 
     test('Refuses to send, with a message', async () => {
@@ -691,5 +818,37 @@ describe('#buildScoresEmailPanel', () => {
     // Just after midnight in the UK during summer time is still that UK day
     expect(formatNotifiedDate('2026-07-14T23:30:00.000Z')).toBe('15 July 2026')
     expect(formatNotifiedDate(undefined)).toBeNull()
+  })
+})
+
+describe('#withSavedScores', () => {
+  test('New scores are stamped now and cleared scores are blanked', () => {
+    const now = new Date('2026-11-10T12:00:00.000Z')
+    const result = withSavedScores(
+      { id: 'x', gdad: scoredGdad },
+      { design_communication: 1, iterative_design: null },
+      now
+    )
+    expect(result.gdad.design_communication).toMatchObject({
+      evidenceText: 'Some evidence',
+      officialScore: 1,
+      scoredAt: '2026-11-10T12:00:00.000Z'
+    })
+    expect(result.gdad.iterative_design).toMatchObject({
+      officialScore: null,
+      scoredAt: null
+    })
+    // The original is not changed
+    expect(scoredGdad.design_communication.officialScore).toBe(3)
+  })
+})
+
+describe('#possessive', () => {
+  test.each([
+    ['Ada Scored', 'Ada Scored’s'],
+    ['James', 'James’'],
+    ['Chris Jones', 'Chris Jones’']
+  ])('%s → %s', (name, expected) => {
+    expect(possessive(name)).toBe(expected)
   })
 })

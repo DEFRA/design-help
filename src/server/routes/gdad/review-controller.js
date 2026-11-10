@@ -28,8 +28,10 @@ import {
   SCORES_EMAIL_RESULT_FLASH,
   buildScoresEmailPanel,
   canOfferScoresEmail,
+  possessive,
   scoresNotifyStatus,
-  sendScoresUpdated
+  sendScoresUpdated,
+  shouldOfferEmailAfterSave
 } from './scores-notify.js'
 
 function byName(a, b) {
@@ -139,6 +141,16 @@ function targetViewContext(user, target) {
 function scoringForbidden() {
   return Boom.forbidden('Only the Head of Design can give GDaD scores.')
 }
+
+function emailingForbidden() {
+  return Boom.forbidden(
+    'Only the Head of Design can email people about their GDaD scores.'
+  )
+}
+
+const personPageUrl = (target) => `/review/gdad-evidence/${target.id}`
+const scoresSavedUrl = (target) =>
+  `/review/gdad-evidence/${target.id}/scores-saved`
 
 /**
  * All seven `score_<key>` fields: blank clears, otherwise 1–3.
@@ -347,7 +359,38 @@ export const gdadReviewRoutes = [
         return h.redirect(`/review/gdad-evidence/${target.id}?saved=none`)
       }
       await backendApi.saveGdadScores(target.id, changed, request.app.user.id)
-      return h.redirect(`/review/gdad-evidence/${target.id}?saved=1`)
+      if (shouldOfferEmailAfterSave(target, changed)) {
+        return h.redirect(scoresSavedUrl(target))
+      }
+      return h.redirect(`${personPageUrl(target)}?saved=1`)
+    }
+  },
+  {
+    // Head of Design only: straight after saving scores, offer to email
+    // the person. If there is nothing to email about (already sent, or
+    // emailing is not set up), go back to their evidence page.
+    method: 'GET',
+    path: '/review/gdad-evidence/{personId}/scores-saved',
+    async handler(request, h) {
+      const { target, response } = await requireReviewableTarget(request, h)
+      if (response) {
+        return response
+      }
+      const user = request.app.user
+      if (!canScoreGdadEvidenceForTarget(user, target)) {
+        return emailingForbidden()
+      }
+      const scoresEmail = await buildScoresEmailPanel(target, user)
+      if (scoresEmail?.state !== 'ready') {
+        return h.redirect(personPageUrl(target))
+      }
+      return h.view('gdad/scores-saved', {
+        pageTitle: `Scores saved for ${target.name}`,
+        targetPersonId: target.id,
+        targetName: target.name,
+        targetNamePossessive: possessive(target.name),
+        managerName: scoresEmail.managerName
+      })
     }
   },
   {
@@ -363,12 +406,10 @@ export const gdadReviewRoutes = [
       }
       const user = request.app.user
       if (!canScoreGdadEvidenceForTarget(user, target)) {
-        return Boom.forbidden(
-          'Only the Head of Design can email people about their GDaD scores.'
-        )
+        return emailingForbidden()
       }
 
-      const backToPerson = `/review/gdad-evidence/${target.id}`
+      const backToPerson = personPageUrl(target)
       if (!canOfferScoresEmail()) {
         request.yar.flash(SCORES_EMAIL_RESULT_FLASH, {
           kind: 'failed',
@@ -450,6 +491,9 @@ export const gdadReviewRoutes = [
         return h.redirect(`${skillUrl}?saved=none`)
       }
       await backendApi.saveGdadScores(target.id, changed, request.app.user.id)
+      if (shouldOfferEmailAfterSave(target, changed)) {
+        return h.redirect(scoresSavedUrl(target))
+      }
       return h.redirect(`${skillUrl}?saved=1`)
     }
   }
