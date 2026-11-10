@@ -15,13 +15,22 @@ import {
 import { INVITE_RESULT_FLASH } from './invites-controller.js'
 import { isInvitable } from './invites.js'
 
-/** Success banner after the Head of Design sets up or changes someone. */
+/**
+ * Success banner after an admin adds someone, or the Head of Design sets up
+ * or changes someone.
+ */
 function teamMemberSavedBanner(query, people, user) {
-  if (!user?.isHeadOfDesignSuperUser || !query.person) {
+  if (!query.person) {
     return null
   }
   const person = people.find((p) => p.id === String(query.person))
   if (!person?.name) {
+    return null
+  }
+  if (query.saved === 'added') {
+    return `${person.name} has been added. Use Change to set their job title and line manager, or send them an invite.`
+  }
+  if (!user?.isHeadOfDesignSuperUser) {
     return null
   }
   if (query.saved === 'created') {
@@ -64,7 +73,7 @@ export const usersRoutes = [
       )
 
       return h.view('admin/users', {
-        pageTitle: 'Admin',
+        pageTitle: 'People and access',
         rows: rows.map((row) => ({
           ...row,
           canInvite: invitableIds.has(row.id),

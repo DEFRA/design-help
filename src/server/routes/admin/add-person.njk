@@ -1,0 +1,55 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      {{ govukBackLink({ text: "Back to People and access", href: "/admin/users" }) }}
+
+      {% if errorList.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errorList
+        }) }}
+      {% endif %}
+
+      <h1 class="govuk-heading-xl">{{ heading }}</h1>
+
+      {% if duplicateChangeHref %}
+        <p class="govuk-body">
+          <a class="govuk-link" href="{{ duplicateChangeHref }}">Change the details of the person who already has this email address</a>
+        </p>
+      {% endif %}
+
+      <form method="post" action="{{ formAction }}" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+
+        {{ govukInput({
+          label: { text: "Full name", classes: "govuk-label--m" },
+          id: "name",
+          name: "name",
+          value: form.name,
+          autocomplete: "off",
+          spellcheck: false,
+          errorMessage: { text: errors.name } if errors.name
+        }) }}
+
+        {{ govukInput({
+          label: { text: "Defra email address", classes: "govuk-label--m" },
+          hint: { text: "They’ll use this to sign in, for example name@defra.gov.uk" },
+          id: "email",
+          name: "email",
+          type: "email",
+          value: form.email,
+          autocomplete: "off",
+          spellcheck: false,
+          errorMessage: { text: errors.email } if errors.email
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({ text: "Add to list" }) }}
+          <a class="govuk-link" href="/admin/users">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

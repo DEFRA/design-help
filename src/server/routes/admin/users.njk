@@ -6,7 +6,7 @@
       {% set adminToolsActiveTab = 'people' %}
       {% include "partials/admin-tools-nav.njk" %}
 
-      <h1 class="govuk-heading-xl">Admin</h1>
+      <h1 class="govuk-heading-xl">People and access</h1>
 
       {% if savedBanner %}
         {{ govukNotificationBanner({ type: "success", text: savedBanner }) }}
@@ -31,37 +31,13 @@
         {% endif %}
       {% endif %}
 
-      {% if user.isHeadOfDesignSuperUser %}
-        <p class="govuk-body">
-          As Head of Design you can give or remove admin access for people on this list: select Change next to their name. Admins set by the service team can’t be changed here. Use the GDaD evidence admin tool to review capability evidence.
-        </p>
-      {% endif %}
+      <p class="govuk-body">Add people, set their job title and line manager, and give or remove admin access. People marked Pending haven’t signed in yet.</p>
 
-      {% if user.isHeadOfDesignSuperUser %}
-        <div class="govuk-button-group govuk-!-margin-bottom-6">
-          <a class="govuk-button" data-module="govuk-button" href="/admin/team-member/new">Add team member</a>
-          <a class="govuk-link" href="/admin/add-profile?new=1">Add someone with a full directory profile</a>
-        </div>
-      {% else %}
-        <p class="govuk-body govuk-!-margin-bottom-6">
-          <a class="govuk-button" data-module="govuk-button" href="/admin/add-profile?new=1">Add team member</a>
-        </p>
-      {% endif %}
-
-      <h2 class="govuk-heading-m">People access and profiles</h2>
-      <form method="post" action="/admin/approved-emails" class="govuk-!-margin-bottom-4">
-        <input type="hidden" name="crumb" value="{{ crumb }}">
-        <div class="govuk-form-group">
-          <label class="govuk-label" for="approved-email">Add person (email address)</label>
-          <input class="govuk-input govuk-!-width-two-thirds" id="approved-email" name="email" type="email" placeholder="name@defra.gov.uk">
-        </div>
-        <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Add person</button>
-      </form>
+      <p class="govuk-body govuk-!-margin-bottom-6">
+        <a class="govuk-button" data-module="govuk-button" href="/admin/people/new">Add a person</a>
+      </p>
 
       {% if pendingInviteCount > 0 %}
-        <p class="govuk-body govuk-!-margin-bottom-2">
-          People marked <strong>Pending</strong> are on the list but have not signed in yet. You can email them a sign-in link.
-        </p>
         <p class="govuk-body">
           <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/admin/users/invite-pending">Invite everyone who’s pending ({{ pendingInviteCount }})</a>
         </p>

@@ -134,10 +134,10 @@ export function adminAccessFor(existing, user) {
 }
 
 /**
- * Returns a map of field name -> message. `existing` is the person being
- * changed (null when adding), `people` everyone on the list.
+ * Name and Defra email rules shared by "Set up a team member" and
+ * "Add a person". Returns a map of field name -> message.
  */
-export function validateTeamMemberForm(form, { existing, people, user }) {
+export function validateNameAndEmail(form) {
   const errors = {}
 
   if (!form.name) {
@@ -152,6 +152,16 @@ export function validateTeamMemberForm(form, { existing, people, user }) {
     errors.email =
       'Enter a Defra email address ending in @defra.gov.uk, like name@defra.gov.uk'
   }
+
+  return errors
+}
+
+/**
+ * Returns a map of field name -> message. `existing` is the person being
+ * changed (null when adding), `people` everyone on the list.
+ */
+export function validateTeamMemberForm(form, { existing, people, user }) {
+  const errors = validateNameAndEmail(form)
 
   const role = normaliseAllowedRole(form.role)
   if (!role) {
@@ -315,7 +325,7 @@ async function applyAdminAccess(existing, form, user) {
   }
 }
 
-const DUPLICATE_EMAIL_MESSAGE =
+export const DUPLICATE_EMAIL_MESSAGE =
   'That email address is already on the list. Change their details instead of adding them again'
 
 /** Where to change the person who already has this email, if we can find them. */

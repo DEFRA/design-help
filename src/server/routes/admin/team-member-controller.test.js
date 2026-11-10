@@ -864,16 +864,17 @@ describe('#teamMemberRoutes', () => {
   })
 
   describe('People and access', () => {
-    test('Head of Design sees the new form button, Change links and the success banner', async () => {
+    test('Head of Design sees Add a person, Change links and the success banner', async () => {
       mockState.people.push(person(ids.created, { name: 'Nia New' }))
       const { result } = await get(
         users.hod,
         `/admin/users?saved=created&person=${ids.created}`
       )
-      expect(result).toContain('href="/admin/team-member/new"')
+      expect(result).toContain('href="/admin/people/new"')
+      expect(result).not.toContain('href="/admin/team-member/new"')
       expect(result).toContain(`href="/admin/team-member/${ids.report}"`)
       expect(result).toContain(`href="/admin/team-member/${ids.pending}"`)
-      expect(result).toContain('href="/admin/add-profile?new=1"')
+      expect(result).not.toContain('href="/admin/add-profile?new=1"')
       expect(result).toContain('Nia New is set up.')
       expect(result).toContain('see this when they sign in.')
     })
@@ -945,13 +946,13 @@ describe('#teamMemberRoutes', () => {
       expect(result).not.toContain(`href="/admin/users/${ids.report}/edit"`)
     })
 
-    test('Other admins keep the old wizard and get no Change links', async () => {
+    test('Other admins get Add a person but no Change links', async () => {
       const { statusCode, result } = await get(
         users.admin,
         `/admin/users?saved=created&person=${ids.report}`
       )
       expect(statusCode).toBe(statusCodes.ok)
-      expect(result).toContain('href="/admin/add-profile?new=1"')
+      expect(result).toContain('href="/admin/people/new"')
       expect(result).not.toContain('/admin/team-member/')
       expect(result).not.toContain('is set up.')
     })
