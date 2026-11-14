@@ -109,9 +109,20 @@ export const backendApi = {
       managerId
     })
   },
-  saveGdadEvidence(id, evidence) {
+  saveGdadEvidence(id, evidence, updatedById) {
     return call('PUT', `/people/${encodeURIComponent(id)}/gdad/evidence`, {
-      evidence
+      evidence,
+      ...(updatedById ? { updatedById } : {})
+    })
+  },
+  /**
+   * Evidence towards the next review, kept beside the current (scored)
+   * evidence until the Head of Design scores it. Blank text discards it.
+   */
+  saveGdadNewEvidence(id, evidence, updatedById) {
+    return call('PUT', `/people/${encodeURIComponent(id)}/gdad/new-evidence`, {
+      evidence,
+      ...(updatedById ? { updatedById } : {})
     })
   },
   saveGdadScores(id, scores, scoredById) {

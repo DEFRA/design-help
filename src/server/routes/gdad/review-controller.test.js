@@ -756,7 +756,7 @@ describe('#gdadReviewRoutes access', () => {
       mockState.people = [...people, designerPerson]
       const detail = (html) => {
         const start = html.indexOf('<h1')
-        return html.slice(start, html.indexOf('Evidence (STAR)', start))
+        return html.slice(start, html.indexOf('</dl>', start))
       }
       const designerView = (
         await get(users.designer, '/my-gdad-evidence/design_communication')

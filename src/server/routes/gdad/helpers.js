@@ -14,22 +14,60 @@ import {
 
 const PERSON_ID_PATTERN = /^[a-f0-9]{24}$/
 
+function toScore(value) {
+  return value == null || value === '' ? null : Number(value)
+}
+
+/** "10 November 2026", in UK time, or null. */
+export function formatGdadDate(value) {
+  const d = toDate(value)
+  return d
+    ? d.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Europe/London'
+      })
+    : null
+}
+
+/** An entry from `previous` (newest first), ready to show. */
+function buildPreviousEntry(entry) {
+  const officialScore = toScore(entry?.officialScore)
+  return {
+    evidenceText: entry?.evidenceText ?? '',
+    evidenceUpdatedLabel: formatGdadEvidenceTimestamp(entry?.evidenceUpdatedAt),
+    officialScore,
+    scoreLabel: officialScore ? SCORE_LABELS[officialScore] : null,
+    scoredDateLabel: formatGdadDate(entry?.scoredAt),
+    archivedDateLabel: formatGdadDate(entry?.archivedAt)
+  }
+}
+
 /**
  * One row per skill for the summary/review tables: skill metadata plus the
  * person's saved evidence, official score and derived bands.
  * `personGdad` is `person.gdad` from the backend (keys may be missing).
+ *
+ * New evidence is evidence towards the next review, kept beside the
+ * current (scored) evidence until the Head of Design scores it. A backend
+ * from before new evidence existed sends no `newEvidenceText` key at all:
+ * then there is no new evidence and none can be started.
  */
 export function buildSkillRows(personGdad, role) {
   const gdad = personGdad ?? {}
   return SKILLS.map((meta) => {
     const row = gdad[meta.key] ?? {}
-    const officialScore =
-      row.officialScore == null || row.officialScore === ''
-        ? null
-        : Number(row.officialScore)
+    const officialScore = toScore(row.officialScore)
     const evidenceText = row.evidenceText ?? ''
     const evidenceUpdatedAt = row.evidenceUpdatedAt ?? null
     const scoredAt = row.scoredAt ?? null
+    const hasEvidence = Boolean(String(evidenceText).trim())
+    const newEvidenceSupported = row.newEvidenceText !== undefined
+    const newEvidenceText = row.newEvidenceText ?? ''
+    const hasNewEvidence =
+      newEvidenceSupported && Boolean(String(newEvidenceText).trim())
+    const newEvidenceUpdatedAt = row.newEvidenceUpdatedAt ?? null
     return {
       ...meta,
       frameworkUrl: skillFrameworkUrl(meta.frameworkHash),
@@ -37,12 +75,34 @@ export function buildSkillRows(personGdad, role) {
       evidenceUpdatedAt,
       evidenceUpdatedLabel: formatGdadEvidenceTimestamp(evidenceUpdatedAt),
       scoredAt,
+      scoredDateLabel: formatGdadDate(scoredAt),
+      hasNewEvidence,
+      newEvidenceText: hasNewEvidence ? newEvidenceText : '',
+      newEvidenceUpdatedAt: hasNewEvidence ? newEvidenceUpdatedAt : null,
+      newEvidenceUpdatedLabel: hasNewEvidence
+        ? formatGdadEvidenceTimestamp(newEvidenceUpdatedAt)
+        : null,
+      // Offered once the current evidence has been scored
+      canStartNewEvidence:
+        newEvidenceSupported &&
+        hasEvidence &&
+        officialScore != null &&
+        !hasNewEvidence,
+      previous: Array.isArray(row.previous)
+        ? row.previous.map(buildPreviousEntry)
+        : [],
       needsScoring: skillNeedsScoring(evidenceText, officialScore, {
         evidenceUpdatedAt,
-        scoredAt
+        scoredAt,
+        hasNewEvidence
       }),
       officialScore,
       scoreLabel: officialScore ? SCORE_LABELS[officialScore] : null,
+      // While there is new evidence the score choice starts blank, and
+      // blank leaves the current score alone: picking a score scores the
+      // new evidence (see changedScores)
+      scoreSelectValue: hasNewEvidence ? null : officialScore,
+      blankScoreText: hasNewEvidence ? 'Not scored yet' : 'Not set',
       expectedBand: getExpectedBandForSkillAndRole(meta.key, role),
       gradedLevel: getGradedLevelForSkillScore(meta.key, role, officialScore)
     }
@@ -59,15 +119,19 @@ function toDate(value) {
 
 /**
  * A skill needs the reviewer's attention when it has evidence but no score,
- * or the evidence was added or changed after it was last scored. Scores
- * saved before score dates were recorded have no `scoredAt`; those are not
- * flagged, because there is nothing to compare against.
+ * the evidence was added or changed after it was last scored, or there is
+ * new evidence waiting to be scored. Scores saved before score dates were
+ * recorded have no `scoredAt`; those are not flagged for changed evidence,
+ * because there is nothing to compare against.
  */
 export function skillNeedsScoring(
   evidenceText,
   officialScore,
-  { evidenceUpdatedAt, scoredAt }
+  { evidenceUpdatedAt, scoredAt, hasNewEvidence = false }
 ) {
+  if (hasNewEvidence) {
+    return true
+  }
   if (!String(evidenceText ?? '').trim()) {
     return false
   }

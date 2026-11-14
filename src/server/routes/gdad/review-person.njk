@@ -12,6 +12,11 @@
           titleText: "There is a problem",
           errorList: [{ text: error, href: "#score-" + errorSkillKey }]
         }) }}
+      {% elif concurrentError and canEditScores %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          descriptionText: concurrentError
+        }) }}
       {% endif %}
 
       {# Banners sit at the very top, so they are seen without scrolling #}

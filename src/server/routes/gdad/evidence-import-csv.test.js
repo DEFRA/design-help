@@ -42,6 +42,7 @@ vi.mock('#/server/common/helpers/backend-api.js', () => ({
     getPerson: async (id) =>
       mockState.people.find((person) => person.id === id) ?? null,
     saveGdadEvidence: vi.fn(async () => ({})),
+    saveGdadNewEvidence: vi.fn(async () => ({})),
     saveGdadScores: vi.fn()
   }
 }))
@@ -770,6 +771,86 @@ describe('#gdadEvidenceRoutes CSV import', () => {
 
     test('Says the selected file is empty when it is', async () => {
       await expectError({ file: '' }, 'The selected file is empty')
+    })
+  })
+
+  describe('Skills with new evidence', () => {
+    // The new backend's shape: every key is there, even as null
+    function newShape(entry) {
+      return {
+        evidenceText: '',
+        evidenceUpdatedAt: null,
+        evidenceUpdatedById: null,
+        officialScore: null,
+        scoredAt: null,
+        newEvidenceText: null,
+        newEvidenceUpdatedAt: null,
+        newEvidenceUpdatedById: null,
+        previous: [],
+        ...entry
+      }
+    }
+
+    test('Imports into the new evidence, leaving the current evidence alone', async () => {
+      mockState.people[0].gdad = {
+        design_communication: newShape({
+          evidenceText: 'Situation: scored evidence',
+          officialScore: 2,
+          scoredAt: SCORED_AT,
+          newEvidenceText: 'Situation: new evidence in progress'
+        }),
+        iterative_design: newShape({
+          evidenceText: 'Situation: older evidence',
+          officialScore: 2,
+          scoredAt: SCORED_AT
+        })
+      }
+      const { headers } = await upload({ file: partialTemplate() })
+      expect(headers.location).toBe('/my-gdad-evidence?imported=2')
+
+      expect(backendApi.saveGdadNewEvidence).toHaveBeenCalledTimes(1)
+      const [newId, newEvidence, newBy] =
+        backendApi.saveGdadNewEvidence.mock.calls[0]
+      expect(newId).toBe(ids.designer)
+      expect(Object.keys(newEvidence)).toEqual(['design_communication'])
+      expect(newEvidence.design_communication).toBe(
+        expectedEvidence(UNICODE_EVIDENCE.design_communication)
+      )
+      expect(newBy).toBe(ids.designer)
+
+      const [, current, currentBy] = savedEvidence()
+      expect(Object.keys(current)).toEqual(['iterative_design'])
+      // The person record shows the new backend, so who saved it is sent
+      expect(currentBy).toBe(ids.designer)
+    })
+
+    test('Does not re-save new evidence that has not changed', async () => {
+      mockState.people[0].gdad = {
+        design_communication: newShape({
+          evidenceText: 'Situation: scored evidence',
+          officialScore: 2,
+          scoredAt: SCORED_AT,
+          newEvidenceText: expectedEvidence(
+            UNICODE_EVIDENCE.design_communication
+          )
+        })
+      }
+      const file = toCsv(
+        fillTemplate('g7', {
+          design_communication: UNICODE_EVIDENCE.design_communication
+        })
+      )
+      const { headers } = await upload({ file })
+      expect(headers.location).toBe('/my-gdad-evidence?imported=0')
+      expect(backendApi.saveGdadNewEvidence).not.toHaveBeenCalled()
+      expect(backendApi.saveGdadEvidence).not.toHaveBeenCalled()
+    })
+
+    test('With the old backend, does not send who saved the evidence', async () => {
+      await upload({ file: partialTemplate() })
+      const [, , updatedById] = savedEvidence()
+      expect(updatedById).toBeUndefined()
+      expect(backendApi.saveGdadNewEvidence).not.toHaveBeenCalled()
     })
   })
 })

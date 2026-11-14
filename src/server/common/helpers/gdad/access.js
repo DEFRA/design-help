@@ -72,6 +72,18 @@ export function canScoreGdadEvidenceForTarget(user, target) {
 }
 
 /**
+ * Who may write or change someone else's GDaD evidence on their behalf:
+ * the Head of Design only (designers edit their own on My GDaD evidence).
+ * Line managers are view-only.
+ */
+export function canEditGdadEvidenceForTarget(user, target) {
+  return (
+    getGdadReviewerRole(user) === 'hod' &&
+    canReviewGdadEvidenceForTarget(user, target)
+  )
+}
+
+/**
  * All people the user may review, with profiles, excluding themselves.
  * Pass `people` if the full list has already been loaded, to save a
  * second call to the backend.

@@ -1,0 +1,34 @@
+{% extends 'layouts/page.njk' %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <a class="govuk-back-link" href="{{ skillUrl }}">Back to {{ skill.label }}</a>
+
+      <span class="govuk-caption-l">{{ personName }} · {{ skill.label }}</span>
+      <h1 class="govuk-heading-xl">Are you sure?</h1>
+
+      <p class="govuk-body">
+        {% if isOwn %}
+          This deletes your new evidence for {{ skill.label }}. Your current evidence and score aren’t affected.
+        {% else %}
+          This deletes {{ personNamePossessive }} new evidence for {{ skill.label }}. Their current evidence and score aren’t affected.
+        {% endif %}
+      </p>
+
+      <form method="post" action="{{ skillUrl }}/discard-new" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+        <div class="govuk-button-group">
+          {{ govukButton({
+            text: "Discard new evidence",
+            classes: "govuk-button--warning",
+            preventDoubleClick: true
+          }) }}
+          <a class="govuk-link" href="{{ skillUrl }}">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

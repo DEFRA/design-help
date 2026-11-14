@@ -213,9 +213,13 @@ describe('#gdadEvidenceRoutes skill pages', () => {
       })
       expect(statusCode).toBe(302)
       expect(headers.location).toBe(`${READ_URL}?saved=1`)
-      expect(backendApi.saveGdadEvidence).toHaveBeenCalledWith(ids.designer, {
-        design_communication: 'Situation: new evidence'
-      })
+      // This made-up person has the old backend's shape (no
+      // evidenceUpdatedById), so who saved it is not sent
+      expect(backendApi.saveGdadEvidence).toHaveBeenCalledWith(
+        ids.designer,
+        { design_communication: 'Situation: new evidence' },
+        undefined
+      )
 
       const { result } = await get(headers.location)
       expect(result).toContain('govuk-notification-banner--success')

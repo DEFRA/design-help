@@ -1,8 +1,12 @@
 import Boom from '@hapi/boom'
 
-import { backendApi } from '#/server/common/helpers/backend-api.js'
+import {
+  BackendApiError,
+  backendApi
+} from '#/server/common/helpers/backend-api.js'
 import {
   canAccessGdadReviewSection,
+  canEditGdadEvidenceForTarget,
   canScoreGdadEvidenceForTarget,
   getGdadReviewerRole,
   listReviewablePeople
@@ -33,6 +37,11 @@ import {
   sendScoresUpdated,
   shouldOfferEmailAfterSave
 } from './scores-notify.js'
+import {
+  buildEvidenceWriteRoutes,
+  evidenceBannerFromQuery,
+  resolveBehalfSkill
+} from './evidence-edit.js'
 
 function byName(a, b) {
   return String(a.name).localeCompare(String(b.name), undefined, {
@@ -48,15 +57,19 @@ export function buildTeamRow(person) {
   const skillRows = buildSkillRows(person.gdad, person.role)
   let lastEvidenceAt = null
   for (const skill of skillRows) {
-    if (!String(skill.evidenceText).trim() || !skill.evidenceUpdatedAt) {
-      continue
-    }
-    const updatedAt = new Date(skill.evidenceUpdatedAt)
-    if (
-      !Number.isNaN(updatedAt.getTime()) &&
-      (!lastEvidenceAt || updatedAt > lastEvidenceAt)
-    ) {
-      lastEvidenceAt = updatedAt
+    const times = [
+      String(skill.evidenceText).trim() ? skill.evidenceUpdatedAt : null,
+      skill.newEvidenceUpdatedAt
+    ]
+    for (const time of times) {
+      const updatedAt = time ? new Date(time) : null
+      if (
+        updatedAt &&
+        !Number.isNaN(updatedAt.getTime()) &&
+        (!lastEvidenceAt || updatedAt > lastEvidenceAt)
+      ) {
+        lastEvidenceAt = updatedAt
+      }
     }
   }
   const skillsNeedingScoring = skillRows.filter((s) => s.needsScoring).length
@@ -138,6 +151,25 @@ function targetViewContext(user, target) {
   }
 }
 
+const CONCURRENT_UPDATE_ERROR =
+  'Someone else changed this evidence just now. Try again.'
+
+/**
+ * Saves scores. Returns false when the backend refused them because the
+ * evidence changed while the Head of Design was scoring it.
+ */
+async function trySaveScores(target, changed, scoredById) {
+  try {
+    await backendApi.saveGdadScores(target.id, changed, scoredById)
+    return true
+  } catch (error) {
+    if (error instanceof BackendApiError && error.statusCode === 409) {
+      return false
+    }
+    throw error
+  }
+}
+
 function scoringForbidden() {
   return Boom.forbidden('Only the Head of Design can give GDaD scores.')
 }
@@ -196,6 +228,12 @@ function isAfter(a, b) {
  * reviewed and clears "Waiting for a score"). The backend stamps
  * `scoredAt` on every skill it is sent, so sending other unchanged scores
  * would make them look newly scored.
+ *
+ * A skill with new evidence (towards the next review) is different: any
+ * score scores the new evidence, even the same number as before, and the
+ * backend then moves the current evidence and score to previous evidence.
+ * Its score choice starts blank, and blank leaves it alone rather than
+ * clearing the current score.
  */
 export function changedScores(target, scores) {
   const saved = target?.gdad ?? {}
@@ -203,6 +241,12 @@ export function changedScores(target, scores) {
   for (const [key, score] of Object.entries(scores)) {
     const entry = saved[key] ?? {}
     const newScore = normaliseScore(score)
+    if (String(entry.newEvidenceText ?? '').trim()) {
+      if (newScore != null) {
+        changed[key] = score
+      }
+      continue
+    }
     const scoreChanged = normaliseScore(entry.officialScore) !== newScore
     const reviewsNewEvidence =
       newScore != null && isAfter(entry.evidenceUpdatedAt, entry.scoredAt)
@@ -305,6 +349,7 @@ export const gdadReviewRoutes = [
 
       const skillRows = buildSkillRows(target.gdad, target.role)
       const hasError = request.query.err === 'invalid'
+      const concurrentError = request.query.err === 'concurrent'
       // The error is shown next to the score that was not valid, or the
       // first score if we do not know which one it was
       const querySkill = String(request.query.skill ?? '')
@@ -330,6 +375,7 @@ export const gdadReviewRoutes = [
           ? 'Select valid score values (1, 2, 3 or Not set).'
           : null,
         errorSkillKey: hasError ? errorSkillKey : null,
+        concurrentError: concurrentError ? CONCURRENT_UPDATE_ERROR : null,
         scoresEmail,
         scoresEmailResult: scoresEmailResult ?? null
       })
@@ -358,7 +404,9 @@ export const gdadReviewRoutes = [
       if (!Object.keys(changed).length) {
         return h.redirect(`/review/gdad-evidence/${target.id}?saved=none`)
       }
-      await backendApi.saveGdadScores(target.id, changed, request.app.user.id)
+      if (!(await trySaveScores(target, changed, request.app.user.id))) {
+        return h.redirect(`${personPageUrl(target)}?err=concurrent`)
+      }
       if (shouldOfferEmailAfterSave(target, changed)) {
         return h.redirect(scoresSavedUrl(target))
       }
@@ -444,16 +492,23 @@ export const gdadReviewRoutes = [
       const skillRows = buildSkillRows(target.gdad, target.role)
       const skill = skillRows.find((s) => s.key === skillKey)
 
+      const errors = {
+        invalid: 'Select a valid score (1, 2, 3 or Not set).',
+        concurrent: CONCURRENT_UPDATE_ERROR
+      }
       return h.view('gdad/review-skill', {
         pageTitle: `${skill.label} — ${target.name} — GDaD evidence`,
         skill,
         ...targetViewContext(request.app.user, target),
+        skillUrl: `/review/gdad-evidence/${target.id}/${encodeURIComponent(skillKey)}`,
+        // Only the Head of Design may change evidence on someone's behalf
+        canEditEvidence: canEditGdadEvidenceForTarget(request.app.user, target),
+        evidenceBanner: evidenceBannerFromQuery(request.query, {
+          isOwn: false
+        }),
         justSaved: request.query.saved === '1',
         nothingChanged: request.query.saved === 'none',
-        error:
-          request.query.err === 'invalid'
-            ? 'Select a valid score (1, 2, 3 or Not set).'
-            : null
+        error: errors[request.query.err] ?? null
       })
     }
   },
@@ -490,11 +545,17 @@ export const gdadReviewRoutes = [
       if (!Object.keys(changed).length) {
         return h.redirect(`${skillUrl}?saved=none`)
       }
-      await backendApi.saveGdadScores(target.id, changed, request.app.user.id)
+      if (!(await trySaveScores(target, changed, request.app.user.id))) {
+        return h.redirect(`${skillUrl}?err=concurrent`)
+      }
       if (shouldOfferEmailAfterSave(target, changed)) {
         return h.redirect(scoresSavedUrl(target))
       }
       return h.redirect(`${skillUrl}?saved=1`)
     }
-  }
+  },
+  ...buildEvidenceWriteRoutes(
+    '/review/gdad-evidence/{personId}/{skillKey}',
+    resolveBehalfSkill
+  )
 ]

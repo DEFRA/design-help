@@ -1,9 +1,6 @@
-import Boom from '@hapi/boom'
-
 import { backendApi } from '#/server/common/helpers/backend-api.js'
 import {
   SKILLS,
-  SKILL_KEY_SET,
   MAX_EVIDENCE_LENGTH,
   getFrameworkRolePageLabel,
   roleFrameworkPageUrl
@@ -20,6 +17,14 @@ import {
   buildSkillRows,
   requireOwnApplicablePerson
 } from './helpers.js'
+import {
+  buildEvidenceWriteRoutes,
+  evidenceBannerFromQuery,
+  normaliseForCompare,
+  resolveOwnSkill,
+  saveOwnEvidenceHandler,
+  updatedByIdFor
+} from './evidence-edit.js'
 
 function frameworkContext(role) {
   return {
@@ -151,77 +156,27 @@ function rowProblems({ unrecognisedRows, duplicateSkillRows, shortRows }) {
   return problems
 }
 
-/** Line endings and surrounding spaces don’t count as a change. */
-function normaliseForCompare(text) {
-  return String(text ?? '')
-    .replace(/\r\n?/g, '\n')
-    .trim()
-}
-
-function changedEvidence(person, evidenceBySkill) {
-  const saved = person.gdad ?? {}
-  return Object.fromEntries(
-    Object.entries(evidenceBySkill).filter(
-      ([skillKey, text]) =>
-        normaliseForCompare(saved[skillKey]?.evidenceText) !==
-        normaliseForCompare(text)
-    )
+/**
+ * The imported evidence that differs from what is saved, split by where it
+ * goes: a skill with new evidence (towards the next review) takes the
+ * import as its new evidence; any other skill takes it as its current
+ * evidence, as before.
+ */
+export function changedImportedEvidence(person, evidenceBySkill) {
+  const skillRows = new Map(
+    buildSkillRows(person.gdad, person.role).map((skill) => [skill.key, skill])
   )
-}
-
-/**
- * The skill from the address, and the signed-in designer it belongs to.
- * Returns `{ person, skillKey }` or `{ response }` for the handler to return.
- */
-async function ownSkill(request, h) {
-  const skillKey = String(request.params.skillKey ?? '').trim()
-  if (!SKILL_KEY_SET.has(skillKey)) {
-    return { response: Boom.notFound() }
+  const current = {}
+  const newEvidence = {}
+  for (const [skillKey, text] of Object.entries(evidenceBySkill)) {
+    const skill = skillRows.get(skillKey)
+    const intoNew = Boolean(skill?.hasNewEvidence)
+    const saved = intoNew ? skill.newEvidenceText : skill?.evidenceText
+    if (normaliseForCompare(saved) !== normaliseForCompare(text)) {
+      ;(intoNew ? newEvidence : current)[skillKey] = text
+    }
   }
-  const { person, response } = await requireOwnApplicablePerson(request, h)
-  return response ? { response } : { person, skillKey }
-}
-
-/**
- * The page with the evidence box. `evidenceValue` is what was typed, when
- * the form comes back with an error; otherwise the saved evidence is shown.
- */
-function editView(h, person, skillKey, { error = null, evidenceValue } = {}) {
-  const context = skillViewContext(person, skillKey)
-  return h
-    .view('gdad/skill-edit', {
-      ...context,
-      pageTitle: `Edit evidence: ${context.skill.label} — GDaD evidence`,
-      error,
-      evidenceValue: evidenceValue ?? context.skill.evidenceText
-    })
-    .code(error ? 400 : 200)
-}
-
-async function saveEvidence(request, h) {
-  const { person, skillKey, response } = await ownSkill(request, h)
-  if (response) {
-    return response
-  }
-
-  const raw = request.payload?.[`evidence_${skillKey}`]
-  const text = String(raw ?? '').trim()
-  if (text.length > MAX_EVIDENCE_LENGTH) {
-    return editView(h, person, skillKey, {
-      error: `Evidence must be ${MAX_EVIDENCE_LENGTH.toLocaleString('en-GB')} characters or fewer`,
-      evidenceValue: text
-    })
-  }
-
-  const skillUrl = `/my-gdad-evidence/${encodeURIComponent(skillKey)}`
-  // Saving the same text again would still mark the skill as updated and
-  // ask the reviewer to score it again, so leave it alone
-  if (!Object.keys(changedEvidence(person, { [skillKey]: text })).length) {
-    return h.redirect(`${skillUrl}?unchanged=1`)
-  }
-
-  await backendApi.saveGdadEvidence(person.id, { [skillKey]: text })
-  return h.redirect(`${skillUrl}?saved=1`)
+  return { current, newEvidence }
 }
 
 function importedCountFromQuery(value) {
@@ -360,11 +315,26 @@ export const gdadEvidenceRoutes = [
       // Only send skills whose evidence has changed: the backend marks
       // every skill it is sent as updated, which would ask the reviewer to
       // score it again
-      const changed = changedEvidence(person, evidenceBySkill)
-      const changedCount = Object.keys(changed).length
-      if (changedCount) {
-        await backendApi.saveGdadEvidence(person.id, changed)
+      const { current, newEvidence } = changedImportedEvidence(
+        person,
+        evidenceBySkill
+      )
+      if (Object.keys(current).length) {
+        await backendApi.saveGdadEvidence(
+          person.id,
+          current,
+          updatedByIdFor(request, person)
+        )
       }
+      if (Object.keys(newEvidence).length) {
+        await backendApi.saveGdadNewEvidence(
+          person.id,
+          newEvidence,
+          request.app.user.id
+        )
+      }
+      const changedCount =
+        Object.keys(current).length + Object.keys(newEvidence).length
       return h.redirect(`/my-gdad-evidence?imported=${changedCount}`)
     }
   },
@@ -372,39 +342,23 @@ export const gdadEvidenceRoutes = [
     method: 'GET',
     path: '/my-gdad-evidence/{skillKey}',
     async handler(request, h) {
-      const { person, skillKey, response } = await ownSkill(request, h)
+      const { ctx, response } = await resolveOwnSkill(request, h)
       if (response) {
         return response
       }
 
       return h.view('gdad/skill', {
-        ...skillViewContext(person, skillKey),
-        justSaved: request.query.saved === '1',
-        nothingChanged: request.query.unchanged === '1'
+        ...skillViewContext(ctx.person, ctx.skillKey),
+        skillUrl: ctx.skillUrl,
+        evidenceBanner: evidenceBannerFromQuery(request.query, { isOwn: true })
       })
     }
   },
-  {
-    method: 'GET',
-    path: '/my-gdad-evidence/{skillKey}/edit',
-    async handler(request, h) {
-      const { person, skillKey, response } = await ownSkill(request, h)
-      if (response) {
-        return response
-      }
-
-      return editView(h, person, skillKey)
-    }
-  },
-  {
-    method: 'POST',
-    path: '/my-gdad-evidence/{skillKey}/edit',
-    handler: saveEvidence
-  },
+  ...buildEvidenceWriteRoutes('/my-gdad-evidence/{skillKey}', resolveOwnSkill),
   {
     // The address the evidence form used before it had its own edit page
     method: 'POST',
     path: '/my-gdad-evidence/{skillKey}',
-    handler: saveEvidence
+    handler: saveOwnEvidenceHandler
   }
 ]

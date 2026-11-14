@@ -1,11 +1,13 @@
 {% extends 'layouts/page.njk' %}
 {% from "partials/gdad.njk" import gdadSkillDetail %}
 
+{# Editing the current evidence, or writing new evidence (mode "new"), for
+   the designer themselves or the Head of Design on their behalf #}
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
 
-      <a class="govuk-back-link" href="/my-gdad-evidence/{{ skill.key }}">Back to {{ skill.label }}</a>
+      <a class="govuk-back-link" href="{{ skillUrl }}">Back to {{ skill.label }}</a>
 
       {% if error %}
         {{ govukErrorSummary({
@@ -14,7 +16,7 @@
         }) }}
       {% endif %}
 
-      <span class="govuk-caption-l">{{ user.name }} · Edit evidence</span>
+      <span class="govuk-caption-l">{{ personName }} · {{ captionText }}</span>
       <h1 class="govuk-heading-xl">{{ skill.label }}</h1>
 
       {{ gdadSkillDetail({
@@ -23,9 +25,20 @@
         frameworkRolePageUrl: frameworkRolePageUrl
       }) }}
 
-      <h2 class="govuk-heading-m">Evidence (STAR)</h2>
+      {% if isNewEvidence %}
+        <h2 class="govuk-heading-m">New evidence (STAR)</h2>
+        <p class="govuk-body">
+          {% if isOwn %}
+            Your current evidence and score stay as they are until your new evidence is scored.
+          {% else %}
+            The current evidence and score stay as they are until the new evidence is scored.
+          {% endif %}
+        </p>
+      {% else %}
+        <h2 class="govuk-heading-m">Evidence (STAR)</h2>
+      {% endif %}
 
-      <form method="post" action="/my-gdad-evidence/{{ skill.key }}/edit" novalidate>
+      <form method="post" action="{{ formAction }}" novalidate>
         <input type="hidden" name="crumb" value="{{ crumb }}">
 
         {{ govukCharacterCount({
@@ -35,7 +48,7 @@
           rows: 12,
           value: evidenceValue,
           label: {
-            text: "Your evidence",
+            text: evidenceLabel,
             classes: "govuk-label--s"
           },
           hint: {
@@ -45,8 +58,8 @@
         }) }}
 
         <div class="govuk-button-group">
-          {{ govukButton({ text: "Save evidence" }) }}
-          <a class="govuk-link" href="/my-gdad-evidence/{{ skill.key }}">Cancel</a>
+          {{ govukButton({ text: "Save new evidence" if isNewEvidence else "Save evidence" }) }}
+          <a class="govuk-link" href="{{ skillUrl }}">Cancel</a>
         </div>
       </form>
 

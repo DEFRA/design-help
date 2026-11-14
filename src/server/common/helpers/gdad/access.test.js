@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 
 import {
   canAccessGdadReviewSection,
+  canEditGdadEvidenceForTarget,
   canReviewGdadEvidenceForTarget,
   canScoreGdadEvidenceForTarget,
   getGdadReviewerRole,
@@ -185,5 +186,19 @@ describe('#listReviewablePeople', () => {
 
   test('Plain admin sees nobody', async () => {
     expect(await listReviewablePeople(plainAdmin)).toEqual([])
+  })
+})
+
+describe('#canEditGdadEvidenceForTarget', () => {
+  const report = { id: 'r1', managerId: lineManager.id }
+
+  test('The Head of Design may change anyone’s evidence', () => {
+    expect(canEditGdadEvidenceForTarget(headOfDesign, report)).toBe(true)
+  })
+
+  test('Line managers, admins and designers may not', () => {
+    for (const user of [lineManager, adminLineManager, plainAdmin, designer]) {
+      expect(canEditGdadEvidenceForTarget(user, report)).toBe(false)
+    }
   })
 })

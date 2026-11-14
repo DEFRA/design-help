@@ -1,5 +1,5 @@
 {% extends 'layouts/page.njk' %}
-{% from "partials/gdad.njk" import gdadSkillDetail %}
+{% from "partials/gdad.njk" import gdadSkillDetail, gdadEvidenceSections %}
 
 {% block content %}
   <div class="govuk-grid-row">
@@ -7,13 +7,13 @@
 
       <a class="govuk-back-link" href="/my-gdad-evidence">Back to My GDaD evidence</a>
 
-      {% if justSaved %}
+      {% if evidenceBanner and evidenceBanner.success %}
         {{ govukNotificationBanner({
           type: "success",
-          text: "Evidence saved"
+          text: evidenceBanner.text
         }) }}
-      {% elif nothingChanged %}
-        {{ govukNotificationBanner({ text: "Your evidence was not changed." }) }}
+      {% elif evidenceBanner %}
+        {{ govukNotificationBanner({ text: evidenceBanner.text }) }}
       {% endif %}
 
       <span class="govuk-caption-l">{{ user.name }} · GDaD evidence</span>
@@ -25,25 +25,12 @@
         frameworkRolePageUrl: frameworkRolePageUrl
       }) }}
 
-      <h2 class="govuk-heading-m">Evidence (STAR)</h2>
-
-      {% if skill.evidenceText %}
-        {{ skill.evidenceText | markdownToGovukHtml }}
-        {% if skill.evidenceUpdatedLabel %}
-          <p class="govuk-body-s govuk-hint">Last updated {{ skill.evidenceUpdatedLabel }}</p>
-        {% endif %}
-        {{ govukButton({
-          text: "Edit evidence",
-          href: "/my-gdad-evidence/" + skill.key + "/edit",
-          classes: "govuk-button--secondary"
-        }) }}
-      {% else %}
-        <p class="govuk-body">You haven’t added evidence for this skill yet.</p>
-        {{ govukButton({
-          text: "Add evidence",
-          href: "/my-gdad-evidence/" + skill.key + "/edit"
-        }) }}
-      {% endif %}
+      {{ gdadEvidenceSections({
+        skill: skill,
+        skillUrl: skillUrl,
+        canEdit: true,
+        isOwn: true
+      }) }}
 
     </div>
   </div>
