@@ -244,7 +244,7 @@ describe('#gdad new evidence', () => {
         expect(i, text).toBeGreaterThan(-1)
         return i
       }
-      expect(at('>New evidence <strong')).toBeLessThan(
+      expect(at('>Evidence for your next review</h2>')).toBeLessThan(
         at('Situation: working towards next year')
       )
       expect(at('Situation: working towards next year')).toBeLessThan(
@@ -256,9 +256,11 @@ describe('#gdad new evidence', () => {
       expect(at('Situation: the scored evidence')).toBeLessThan(
         at('>Previous evidence</h2>')
       )
+      // The tag sits outside the heading, so it is not read out twice
       expect(result).toContain(
-        '<strong class="govuk-tag govuk-tag--blue gdad-heading-tag">New evidence</strong>'
+        '<p class="govuk-body"><strong class="govuk-tag govuk-tag--blue">New evidence</strong></p>'
       )
+      expect(result).not.toMatch(/<h2[^>]*>[^<]*<strong/)
       expect(result).toContain('Last updated 1 Nov 2026, 10:00')
       expect(result).toContain(
         'Your current score of 2 (15 September 2026) is based on this evidence, not your new evidence.'
@@ -315,7 +317,7 @@ describe('#gdad new evidence', () => {
       expect(result).toContain(
         'govuk-tag govuk-tag--blue govuk-!-display-block govuk-!-margin-top-1 gdad-tag-fit">New evidence</strong>'
       )
-      expect(result).toContain('Based on previous evidence')
+      expect(result).toContain('Based on last scored evidence')
       expect(result).not.toContain('Evidence changed since scored')
     })
   })
@@ -438,7 +440,9 @@ describe('#gdad new evidence', () => {
     test('Asks first, with a warning button', async () => {
       const { statusCode, result } = await get(`${OWN}/discard-new`)
       expect(statusCode).toBe(statusCodes.ok)
-      expect(result).toContain('Are you sure?')
+      expect(result).toContain(
+        'Are you sure you want to discard your new evidence?'
+      )
       expect(result).toContain(
         'This deletes your new evidence for Design communication. Your current evidence and score aren’t affected.'
       )
@@ -468,6 +472,26 @@ describe('#gdad new evidence', () => {
   })
 
   describe('Editing the current evidence', () => {
+    test('With an old-backend record, a save from the skill page does not say who saved it', async () => {
+      setPeople({
+        [SKILL]: {
+          evidenceText: 'Situation: the scored evidence',
+          officialScore: 2,
+          scoredAt: SCORED_AT
+        }
+      })
+      const { headers } = await post(`${OWN}/edit`, {
+        [FIELD]: 'Situation: a correction'
+      })
+      expect(headers.location).toBe(`${OWN}?saved=1`)
+      expect(backendApi.saveGdadEvidence).toHaveBeenCalledTimes(1)
+      expect(backendApi.saveGdadEvidence.mock.calls[0]).toEqual([
+        ids.designer,
+        { [SKILL]: 'Situation: a correction' },
+        undefined
+      ])
+    })
+
     test('Is blocked while there is new evidence', async () => {
       setPeople({ [SKILL]: WITH_NEW })
       expect((await get(`${OWN}/edit`)).headers.location).toBe(OWN)
@@ -497,7 +521,8 @@ describe('#gdad new evidence', () => {
       setPeople({ [SKILL]: WITH_NEW })
       const { statusCode, result } = await get(BEHALF, users.hod)
       expect(statusCode).toBe(statusCodes.ok)
-      expect(result).toContain('gdad-heading-tag">New evidence</strong>')
+      expect(result).toContain('>Evidence for their next review</h2>')
+      expect(result).toContain('govuk-tag--blue">New evidence</strong>')
       expect(result).toContain(
         'The current score of 2 (15 September 2026) is based on this evidence, not the new evidence.'
       )
@@ -564,6 +589,9 @@ describe('#gdad new evidence', () => {
       setPeople({ [SKILL]: WITH_NEW })
       const { result } = await get(`${BEHALF}/discard-new`, users.hod)
       expect(result).toContain(
+        'Are you sure you want to discard Made Up Designer’s new evidence?'
+      )
+      expect(result).toContain(
         'This deletes Made Up Designer’s new evidence for Design communication. Their current evidence and score aren’t affected.'
       )
       const { headers } = await post(`${BEHALF}/discard-new`)
@@ -582,7 +610,7 @@ describe('#gdad new evidence', () => {
         users.hod
       )
       expect(result).toContain('gdad-tag-fit">New evidence</strong>')
-      expect(result).toContain('Based on previous evidence')
+      expect(result).toContain('Based on last scored evidence')
       expect(result).toContain(
         'Score for the new evidence for Design communication'
       )
@@ -596,13 +624,100 @@ describe('#gdad new evidence', () => {
   })
 
   describe('Scoring new evidence', () => {
+    // What the scoring page showed for the new evidence
+    const SEEN_NEW = { [`seen_${SKILL}`]: WITH_NEW.newEvidenceUpdatedAt }
+    const SEEN_NONE = { [`seen_${SKILL}`]: 'none' }
+    const PERSON = `/review/gdad-evidence/${ids.designer}`
+
     beforeEach(() => {
       setPeople({ [SKILL]: WITH_NEW })
       mockState.user = users.hod
     })
 
+    test.each([BEHALF, PERSON])(
+      'The page at %s records the new evidence it showed',
+      async (url) => {
+        const { result } = await get(url)
+        expect(result).toContain(
+          `<input type="hidden" name="seen_${SKILL}" value="${WITH_NEW.newEvidenceUpdatedAt}">`
+        )
+        setPeople({ [SKILL]: SCORED })
+        expect((await get(url)).result).toContain(
+          `<input type="hidden" name="seen_${SKILL}" value="none">`
+        )
+      }
+    )
+
+    test.each([BEHALF, PERSON])(
+      '(a) New evidence discarded while %s was open: blank does not wipe the score',
+      async (url) => {
+        setPeople({ [SKILL]: SCORED })
+        const { headers } = await post(url, {
+          ...SEEN_NEW,
+          [`score_${SKILL}`]: ''
+        })
+        expect(headers.location).toBe(`${url}?err=concurrent`)
+        expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
+      }
+    )
+
+    test.each([BEHALF, PERSON])(
+      '(b) New evidence started while %s was open: the old score is not sent',
+      async (url) => {
+        const { headers } = await post(url, {
+          ...SEEN_NONE,
+          [`score_${SKILL}`]: '2'
+        })
+        expect(headers.location).toBe(`${url}?err=concurrent`)
+        expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
+      }
+    )
+
+    test.each([BEHALF, PERSON])(
+      '(c) New evidence edited after %s was read: the score is not saved',
+      async (url) => {
+        const { headers } = await post(url, {
+          [`seen_${SKILL}`]: '2026-10-01T08:00:00.000Z',
+          [`score_${SKILL}`]: '3'
+        })
+        expect(headers.location).toBe(`${url}?err=concurrent`)
+        expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
+        const { result } = await get(headers.location)
+        expect(result).toContain(
+          'Someone else changed this evidence just now. Try again.'
+        )
+      }
+    )
+
+    test('A skill elsewhere in the table changing also stops the whole-table save', async () => {
+      const { headers } = await post(PERSON, {
+        [`seen_iterative_design`]: '2026-10-01T08:00:00.000Z',
+        ...SEEN_NEW,
+        [`score_${SKILL}`]: '3'
+      })
+      expect(headers.location).toBe(`${PERSON}?err=concurrent`)
+      expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
+    })
+
+    test('Nothing changed meanwhile: scores save as normal', async () => {
+      setPeople({ [SKILL]: SCORED })
+      const { headers } = await post(BEHALF, {
+        ...SEEN_NONE,
+        [`score_${SKILL}`]: '3'
+      })
+      expect(headers.location).not.toContain('err=')
+      expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
+        ids.designer,
+        { [SKILL]: 3 },
+        ids.hod
+      )
+    })
+
     test('The same score as before still saves, because it scores the new evidence', async () => {
-      const { headers } = await post(BEHALF, { [`score_${SKILL}`]: '2' })
+      const { headers } = await post(BEHALF, {
+        ...SEEN_NEW,
+        [`score_${SKILL}`]: '2'
+      })
       expect(headers.location).not.toContain('saved=none')
       expect(backendApi.saveGdadScores).toHaveBeenCalledWith(
         ids.designer,
@@ -612,13 +727,17 @@ describe('#gdad new evidence', () => {
     })
 
     test('Leaving it blank does not clear the current score', async () => {
-      const { headers } = await post(BEHALF, { [`score_${SKILL}`]: '' })
+      const { headers } = await post(BEHALF, {
+        ...SEEN_NEW,
+        [`score_${SKILL}`]: ''
+      })
       expect(headers.location).toBe(`${BEHALF}?saved=none`)
       expect(backendApi.saveGdadScores).not.toHaveBeenCalled()
     })
 
     test('Saving the whole table leaves blank new-evidence skills alone', async () => {
-      const { headers } = await post(`/review/gdad-evidence/${ids.designer}`, {
+      const { headers } = await post(PERSON, {
+        ...SEEN_NEW,
         [`score_${SKILL}`]: ''
       })
       expect(headers.location).toContain('saved=none')
@@ -629,7 +748,10 @@ describe('#gdad new evidence', () => {
       vi.mocked(backendApi.saveGdadScores).mockRejectedValueOnce(
         new BackendApiError(409, 'concurrent_update')
       )
-      const { headers } = await post(BEHALF, { [`score_${SKILL}`]: '3' })
+      const { headers } = await post(BEHALF, {
+        ...SEEN_NEW,
+        [`score_${SKILL}`]: '3'
+      })
       expect(headers.location).toBe(`${BEHALF}?err=concurrent`)
       const { result } = await get(headers.location)
       expect(result).toContain(
@@ -683,7 +805,8 @@ describe('#gdad new evidence', () => {
     test('A line manager sees everything read-only', async () => {
       const { statusCode, result } = await get(BEHALF, users.manager)
       expect(statusCode).toBe(statusCodes.ok)
-      expect(result).toContain('gdad-heading-tag">New evidence</strong>')
+      expect(result).toContain('>Evidence for their next review</h2>')
+      expect(result).toContain('govuk-tag--blue">New evidence</strong>')
       expect(result).toContain('>Current evidence</h2>')
       expect(result).toContain('>Previous evidence</h2>')
       expect(result).not.toContain('Edit new evidence')

@@ -26,6 +26,7 @@ import {
   buildCapabilityBand,
   buildSkillRows,
   formatGdadEvidenceTimestamp,
+  newEvidenceToken,
   requireReviewableTarget
 } from './helpers.js'
 import {
@@ -203,6 +204,22 @@ function parseScorePayload(payload) {
     scores[key] = n
   }
   return { scores }
+}
+
+/**
+ * Whether each skill's new evidence is as the scoring page showed it (the
+ * `seen_<key>` fields). A blank score means "leave alone" only while there
+ * is new evidence, and a score given to new evidence must land on the
+ * version that was read, so if the designer started, changed or discarded
+ * new evidence meanwhile nothing is saved. A missing field counts as
+ * "none".
+ */
+export function newEvidenceUnchangedSinceShown(target, payload, skillKeys) {
+  const gdad = target?.gdad ?? {}
+  return skillKeys.every(
+    (key) =>
+      String(payload?.[`seen_${key}`] ?? 'none') === newEvidenceToken(gdad[key])
+  )
 }
 
 function normaliseScore(value) {
@@ -400,6 +417,13 @@ export const gdadReviewRoutes = [
         )
       }
 
+      if (
+        !newEvidenceUnchangedSinceShown(target, request.payload, [
+          ...SKILL_KEY_SET
+        ])
+      ) {
+        return h.redirect(`${personPageUrl(target)}?err=concurrent`)
+      }
       const changed = changedScores(target, scores)
       if (!Object.keys(changed).length) {
         return h.redirect(`/review/gdad-evidence/${target.id}?saved=none`)
@@ -541,6 +565,11 @@ export const gdadReviewRoutes = [
       }
 
       const skillUrl = `/review/gdad-evidence/${target.id}/${encodeURIComponent(skillKey)}`
+      if (
+        !newEvidenceUnchangedSinceShown(target, request.payload, [skillKey])
+      ) {
+        return h.redirect(`${skillUrl}?err=concurrent`)
+      }
       const changed = changedScores(target, { [skillKey]: score })
       if (!Object.keys(changed).length) {
         return h.redirect(`${skillUrl}?saved=none`)

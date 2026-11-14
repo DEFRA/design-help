@@ -53,6 +53,8 @@
       {% if canEditScores %}
         <form method="post" action="/review/gdad-evidence/{{ targetPersonId }}/{{ skill.key }}" novalidate>
           <input type="hidden" name="crumb" value="{{ crumb }}">
+          {# What the page showed, so a save can spot new evidence changed meanwhile #}
+          <input type="hidden" name="seen_{{ skill.key }}" value="{{ skill.newEvidenceToken }}">
           {% if skill.hasNewEvidence %}
             {% set scoreLabelText = "Score for the new evidence" %}
           {% elif skill.officialScore %}

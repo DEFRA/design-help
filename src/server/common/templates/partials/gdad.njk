@@ -97,7 +97,7 @@
             <td class="govuk-table__cell">
               {{ gdadScoreText(skill) }}
               {% if skill.hasNewEvidence and skill.officialScore %}
-                <span class="govuk-hint govuk-body-s govuk-!-display-block govuk-!-margin-bottom-0">Based on previous evidence</span>
+                <span class="govuk-hint govuk-body-s govuk-!-display-block govuk-!-margin-bottom-0">Based on last scored evidence</span>
               {% elif skill.needsScoring and skill.officialScore %}
                 <strong class="govuk-tag govuk-tag--yellow govuk-!-display-block govuk-!-margin-top-1 gdad-tag-fit">Evidence changed since scored</strong>
               {% endif %}
@@ -111,6 +111,8 @@
             </td>
             {% if params.scoreControls %}
               <td class="govuk-table__cell">
+                {# What the page showed, so a save can spot new evidence changed meanwhile #}
+                <input type="hidden" name="seen_{{ skill.key }}" value="{{ skill.newEvidenceToken }}">
                 {{ govukSelect({
                   id: "score-" + skill.key,
                   name: "score_" + skill.key,
@@ -226,7 +228,8 @@
   {% set base = params.skillUrl %}
 
   {% if skill.hasNewEvidence %}
-    <h2 class="govuk-heading-m">New evidence <strong class="govuk-tag govuk-tag--blue gdad-heading-tag">New evidence</strong></h2>
+    <h2 class="govuk-heading-m govuk-!-margin-bottom-2">Evidence for {{ "your" if params.isOwn else "their" }} next review</h2>
+    <p class="govuk-body"><strong class="govuk-tag govuk-tag--blue">New evidence</strong></p>
     {{ skill.newEvidenceText | markdownToGovukHtml }}
     {% if skill.newEvidenceUpdatedLabel %}
       <p class="govuk-body-s govuk-hint">Last updated {{ skill.newEvidenceUpdatedLabel }}</p>

@@ -7,7 +7,13 @@
       <a class="govuk-back-link" href="{{ skillUrl }}">Back to {{ skill.label }}</a>
 
       <span class="govuk-caption-l">{{ personName }} · {{ skill.label }}</span>
-      <h1 class="govuk-heading-xl">Are you sure?</h1>
+      <h1 class="govuk-heading-xl">
+        {% if isOwn %}
+          Are you sure you want to discard your new evidence?
+        {% else %}
+          Are you sure you want to discard {{ personNamePossessive }} new evidence?
+        {% endif %}
+      </h1>
 
       <p class="govuk-body">
         {% if isOwn %}

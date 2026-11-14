@@ -31,6 +31,19 @@ export function formatGdadDate(value) {
     : null
 }
 
+/**
+ * A short record of a skill's new evidence as a page showed it: when it
+ * was last updated, or "none". Scoring forms send it back, so a save can
+ * tell if the new evidence was started, changed or discarded meanwhile.
+ */
+export function newEvidenceToken(entry) {
+  const text = entry?.newEvidenceText
+  if (text === undefined || text === null || !String(text).trim()) {
+    return 'none'
+  }
+  return String(entry.newEvidenceUpdatedAt ?? 'new')
+}
+
 /** An entry from `previous` (newest first), ready to show. */
 function buildPreviousEntry(entry) {
   const officialScore = toScore(entry?.officialScore)
@@ -77,6 +90,7 @@ export function buildSkillRows(personGdad, role) {
       scoredAt,
       scoredDateLabel: formatGdadDate(scoredAt),
       hasNewEvidence,
+      newEvidenceToken: newEvidenceToken(row),
       newEvidenceText: hasNewEvidence ? newEvidenceText : '',
       newEvidenceUpdatedAt: hasNewEvidence ? newEvidenceUpdatedAt : null,
       newEvidenceUpdatedLabel: hasNewEvidence
