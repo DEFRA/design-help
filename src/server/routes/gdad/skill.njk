@@ -12,13 +12,8 @@
           type: "success",
           text: "Evidence saved"
         }) }}
-      {% endif %}
-
-      {% if error %}
-        {{ govukErrorSummary({
-          titleText: "There is a problem",
-          errorList: [{ text: error, href: "#evidence-" + skill.key }]
-        }) }}
+      {% elif nothingChanged %}
+        {{ govukNotificationBanner({ text: "Your evidence was not changed." }) }}
       {% endif %}
 
       <span class="govuk-caption-l">{{ user.name }} · GDaD evidence</span>
@@ -32,27 +27,23 @@
 
       <h2 class="govuk-heading-m">Evidence (STAR)</h2>
 
-      <form method="post" action="/my-gdad-evidence/{{ skill.key }}" novalidate>
-        <input type="hidden" name="crumb" value="{{ crumb }}">
-
-        {{ govukCharacterCount({
-          id: "evidence-" + skill.key,
-          name: "evidence_" + skill.key,
-          maxlength: 12000,
-          rows: 12,
-          value: evidenceValue if evidenceValue is defined else skill.evidenceText,
-          label: {
-            text: "Your evidence",
-            classes: "govuk-label--s"
-          },
-          hint: {
-            text: skill.starHint
-          },
-          errorMessage: { text: error } if error
+      {% if skill.evidenceText %}
+        {{ skill.evidenceText | markdownToGovukHtml }}
+        {% if skill.evidenceUpdatedLabel %}
+          <p class="govuk-body-s govuk-hint">Last updated {{ skill.evidenceUpdatedLabel }}</p>
+        {% endif %}
+        {{ govukButton({
+          text: "Edit evidence",
+          href: "/my-gdad-evidence/" + skill.key + "/edit",
+          classes: "govuk-button--secondary"
         }) }}
-
-        {{ govukButton({ text: "Save evidence" }) }}
-      </form>
+      {% else %}
+        <p class="govuk-body">You haven’t added evidence for this skill yet.</p>
+        {{ govukButton({
+          text: "Add evidence",
+          href: "/my-gdad-evidence/" + skill.key + "/edit"
+        }) }}
+      {% endif %}
 
     </div>
   </div>

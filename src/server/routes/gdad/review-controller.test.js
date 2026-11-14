@@ -765,7 +765,12 @@ describe('#gdadReviewRoutes access', () => {
         .result
       expect(detail(designerView)).toContain('2 — At standard')
       expect(detail(managerView)).toEqual(detail(designerView))
-      expect(designerView).toContain('name="evidence_design_communication"')
+      const designerEdit = (
+        await get(users.designer, '/my-gdad-evidence/design_communication/edit')
+      ).result
+      expect(detail(designerEdit)).toEqual(detail(designerView))
+      expect(designerEdit).toContain('name="evidence_design_communication"')
+      expect(designerView).not.toContain('name="evidence_design_communication"')
       expect(managerView).not.toContain('name="evidence_design_communication"')
     })
   })

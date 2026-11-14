@@ -1,0 +1,55 @@
+{% extends 'layouts/page.njk' %}
+{% from "partials/gdad.njk" import gdadSkillDetail %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+
+      <a class="govuk-back-link" href="/my-gdad-evidence/{{ skill.key }}">Back to {{ skill.label }}</a>
+
+      {% if error %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: [{ text: error, href: "#evidence-" + skill.key }]
+        }) }}
+      {% endif %}
+
+      <span class="govuk-caption-l">{{ user.name }} · Edit evidence</span>
+      <h1 class="govuk-heading-xl">{{ skill.label }}</h1>
+
+      {{ gdadSkillDetail({
+        skill: skill,
+        frameworkRoleLabel: frameworkRoleLabel,
+        frameworkRolePageUrl: frameworkRolePageUrl
+      }) }}
+
+      <h2 class="govuk-heading-m">Evidence (STAR)</h2>
+
+      <form method="post" action="/my-gdad-evidence/{{ skill.key }}/edit" novalidate>
+        <input type="hidden" name="crumb" value="{{ crumb }}">
+
+        {{ govukCharacterCount({
+          id: "evidence-" + skill.key,
+          name: "evidence_" + skill.key,
+          maxlength: 12000,
+          rows: 12,
+          value: evidenceValue,
+          label: {
+            text: "Your evidence",
+            classes: "govuk-label--s"
+          },
+          hint: {
+            text: skill.starHint
+          },
+          errorMessage: { text: error } if error
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({ text: "Save evidence" }) }}
+          <a class="govuk-link" href="/my-gdad-evidence/{{ skill.key }}">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

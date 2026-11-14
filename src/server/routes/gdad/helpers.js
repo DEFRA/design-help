@@ -98,7 +98,11 @@ export function formatGdadEvidenceTimestamp(value) {
   if (Number.isNaN(d.getTime())) {
     return null
   }
-  return d.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+  return d.toLocaleString('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/London'
+  })
 }
 
 /**

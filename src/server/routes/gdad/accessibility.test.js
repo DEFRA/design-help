@@ -129,7 +129,7 @@ describe('#gdad accessibility', () => {
   }
 
   describe('Evidence form', () => {
-    const url = '/my-gdad-evidence/design_communication'
+    const url = '/my-gdad-evidence/design_communication/edit'
 
     test('Uses the GOV.UK character count, with no error or "Error:" title', async () => {
       const { result } = await get(users.designer, url)

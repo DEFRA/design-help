@@ -169,6 +169,61 @@ function changedEvidence(person, evidenceBySkill) {
   )
 }
 
+/**
+ * The skill from the address, and the signed-in designer it belongs to.
+ * Returns `{ person, skillKey }` or `{ response }` for the handler to return.
+ */
+async function ownSkill(request, h) {
+  const skillKey = String(request.params.skillKey ?? '').trim()
+  if (!SKILL_KEY_SET.has(skillKey)) {
+    return { response: Boom.notFound() }
+  }
+  const { person, response } = await requireOwnApplicablePerson(request, h)
+  return response ? { response } : { person, skillKey }
+}
+
+/**
+ * The page with the evidence box. `evidenceValue` is what was typed, when
+ * the form comes back with an error; otherwise the saved evidence is shown.
+ */
+function editView(h, person, skillKey, { error = null, evidenceValue } = {}) {
+  const context = skillViewContext(person, skillKey)
+  return h
+    .view('gdad/skill-edit', {
+      ...context,
+      pageTitle: `Edit evidence: ${context.skill.label} — GDaD evidence`,
+      error,
+      evidenceValue: evidenceValue ?? context.skill.evidenceText
+    })
+    .code(error ? 400 : 200)
+}
+
+async function saveEvidence(request, h) {
+  const { person, skillKey, response } = await ownSkill(request, h)
+  if (response) {
+    return response
+  }
+
+  const raw = request.payload?.[`evidence_${skillKey}`]
+  const text = String(raw ?? '').trim()
+  if (text.length > MAX_EVIDENCE_LENGTH) {
+    return editView(h, person, skillKey, {
+      error: `Evidence must be ${MAX_EVIDENCE_LENGTH.toLocaleString('en-GB')} characters or fewer`,
+      evidenceValue: text
+    })
+  }
+
+  const skillUrl = `/my-gdad-evidence/${encodeURIComponent(skillKey)}`
+  // Saving the same text again would still mark the skill as updated and
+  // ask the reviewer to score it again, so leave it alone
+  if (!Object.keys(changedEvidence(person, { [skillKey]: text })).length) {
+    return h.redirect(`${skillUrl}?unchanged=1`)
+  }
+
+  await backendApi.saveGdadEvidence(person.id, { [skillKey]: text })
+  return h.redirect(`${skillUrl}?saved=1`)
+}
+
 function importedCountFromQuery(value) {
   if (value === undefined || value === null || value === '') {
     return null
@@ -317,52 +372,39 @@ export const gdadEvidenceRoutes = [
     method: 'GET',
     path: '/my-gdad-evidence/{skillKey}',
     async handler(request, h) {
-      const skillKey = String(request.params.skillKey ?? '').trim()
-      if (!SKILL_KEY_SET.has(skillKey)) {
-        return Boom.notFound()
-      }
-      const { person, response } = await requireOwnApplicablePerson(request, h)
+      const { person, skillKey, response } = await ownSkill(request, h)
       if (response) {
         return response
       }
 
       return h.view('gdad/skill', {
         ...skillViewContext(person, skillKey),
-        error: null,
-        justSaved: request.query.saved === '1'
+        justSaved: request.query.saved === '1',
+        nothingChanged: request.query.unchanged === '1'
       })
     }
   },
   {
-    method: 'POST',
-    path: '/my-gdad-evidence/{skillKey}',
+    method: 'GET',
+    path: '/my-gdad-evidence/{skillKey}/edit',
     async handler(request, h) {
-      const skillKey = String(request.params.skillKey ?? '').trim()
-      if (!SKILL_KEY_SET.has(skillKey)) {
-        return Boom.notFound()
-      }
-      const { person, response } = await requireOwnApplicablePerson(request, h)
+      const { person, skillKey, response } = await ownSkill(request, h)
       if (response) {
         return response
       }
 
-      const raw = request.payload?.[`evidence_${skillKey}`]
-      const text = String(raw ?? '').trim()
-      if (text.length > MAX_EVIDENCE_LENGTH) {
-        return h
-          .view('gdad/skill', {
-            ...skillViewContext(person, skillKey),
-            error: `Evidence must be ${MAX_EVIDENCE_LENGTH.toLocaleString('en-GB')} characters or fewer`,
-            evidenceValue: text,
-            justSaved: false
-          })
-          .code(400)
-      }
-
-      await backendApi.saveGdadEvidence(person.id, { [skillKey]: text })
-      return h.redirect(
-        `/my-gdad-evidence/${encodeURIComponent(skillKey)}?saved=1`
-      )
+      return editView(h, person, skillKey)
     }
+  },
+  {
+    method: 'POST',
+    path: '/my-gdad-evidence/{skillKey}/edit',
+    handler: saveEvidence
+  },
+  {
+    // The address the evidence form used before it had its own edit page
+    method: 'POST',
+    path: '/my-gdad-evidence/{skillKey}',
+    handler: saveEvidence
   }
 ]
