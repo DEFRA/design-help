@@ -6,18 +6,24 @@
       <h1 class="govuk-heading-xl">How Design help has been built</h1>
 
       <p class="govuk-body">
+        Design help is mainly a tool for the Defra design team to record and score evidence for the GDaD (Government Digital and Data) pay framework. It grew out of an earlier directory that helps designers find and offer help to each other.
+      </p>
+      <p class="govuk-body">
         This page explains how we built Design help in practice. It covers the tools we used, where it runs, what we changed for Defra, and how we used AI to help write the code. We wrote it so people who use or look after the tool can see how it was made. It is not a formal document for buying or auditing the service.
       </p>
 
-      <h2 class="govuk-heading-m">How we used Cursor and AI to write the code</h2>
+      <h2 class="govuk-heading-m">How we used AI to write the code</h2>
       <p class="govuk-body">
-        We used <strong>AI-supported development</strong> for almost all of the coding. Most of that work happened in the <a class="govuk-link" href="https://cursor.com/">Cursor</a> editor. We used <strong>agent-style</strong> flows: you describe the task in plain language, the tool can change several files at once, and it can suggest commands. A person still checks the result in the browser and decides what to keep.
+        We used <strong>AI-supported development</strong> for almost all of the coding. Early work happened in the <a class="govuk-link" href="https://cursor.com/">Cursor</a> editor. More recent work has been done with <a class="govuk-link" href="https://www.anthropic.com/claude-code">Claude Code</a>, an AI coding tool made by Anthropic.
+      </p>
+      <p class="govuk-body">
+        The maintainer describes each change in plain language and directs the work. Separate AI helper agents then build each change and independently check it. Automated tests, which use made-up data, prove each change works. The maintainer tries each change before it is released and decides what to keep.
       </p>
       <p class="govuk-body">
         The maintainer is not a full-time developer. This way of working meant we could cover more in less time than we would expect from one person working only by hand.
       </p>
       <p class="govuk-body">
-        The work was iterative and conversational. Some people call that informally &ldquo;vibe coding&rdquo;. The maintainer set the direction, tested what changed, and chose what to merge.
+        The work was iterative and conversational. Some people call that informally &ldquo;vibe coding&rdquo;. The maintainer set the direction, tested what changed, and chose what to release.
       </p>
       <p class="govuk-body">
         This approach is <strong>not</strong> the same as a full delivery team with strong checks for a high-scale public service. It <strong>is</strong> a deliberate test of how far we can get with modern AI tools when the audience is smaller and the risks are clearer.
@@ -51,7 +57,13 @@
         </p>
       </div>
       <p class="govuk-body govuk-!-margin-top-4">
-        For how the service is used today, we think the <strong>security risk is relatively low</strong>. It supports an internal design community, the audience is limited, and it does less than a live government transaction service. We should <strong>review that view if more people use it, if we hold more sensitive data, or if we add new systems that connect to it</strong>. If the role of the service grows, we would expect more testing and clearer governance, and we might need to change how it is built.
+        Access is limited. People sign in with a link sent to their Defra email address, and the service only works on the Defra network. In the service, only the person, their line manager and the Head of Design can see someone&rsquo;s GDaD evidence and scores.
+      </p>
+      <p class="govuk-body">
+        The service now holds GDaD evidence and scores, which are linked to people&rsquo;s pay. When it only helped designers find help, we thought the security risk was relatively low. Because it now holds pay-related information, <strong>that view needs reviewing</strong>.
+      </p>
+      <p class="govuk-body">
+        We are checking what data protection requires, including whether we need a data protection impact assessment (DPIA). If the role of the service keeps growing, we would expect more testing and clearer governance, and we might need to change how it is built.
       </p>
 
       <h2 class="govuk-heading-m">Working in the open about this build</h2>

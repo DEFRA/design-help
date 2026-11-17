@@ -22,4 +22,18 @@ describe('#aboutController', () => {
     expect(result).toEqual(expect.stringContaining('About Design help |'))
     expect(statusCode).toBe(statusCodes.ok)
   })
+
+  test('Should describe the GDaD purpose and who can see evidence', async () => {
+    const { result } = await server.inject({ method: 'GET', url: '/about' })
+
+    expect(result).toContain('GDaD')
+    expect(result).toContain(
+      'href="https://understand-digital-data-roles-skills.service.gov.uk"'
+    )
+    expect(result).toContain('Who can see your evidence')
+    expect(result).toContain('The GDaD year')
+    expect(result).toContain('Find help')
+    expect(result).toContain('href="/how-it-has-been-built"')
+    expect(result).not.toContain('User need')
+  })
 })
